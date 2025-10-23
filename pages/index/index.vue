@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<WaterRipple class="container">
 		<!-- 装饰性动画元素组件 -->
 		<PopDecoration />
 
@@ -63,15 +63,17 @@
 			<text class="disclaimer-icon">💡</text>
 			<text class="disclaimer-text">登录=同意被辩论洗脑</text>
 		</view>
-	</view>
+	</WaterRipple>
 </template>
 
 <script>
 	import PopDecoration from '@/components/PopDecoration.vue'
+	import WaterRipple from '@/components/WaterRipple.vue'
 
 	export default {
 		components: {
-			PopDecoration
+			PopDecoration,
+			WaterRipple
 		},
 		data() {
 			return {
@@ -116,19 +118,26 @@
 <style>
 	.container {
 		min-height: 100vh;
-		/* 鲜艳活泼的彩虹渐变背景 + 高级光线效果 */
+		/* 水纹效果容器 - 背景由 WaterRipple 组件绘制 */
 		background:
 			radial-gradient(circle at 20% 15%, rgba(255, 100, 150, 0.5) 0%, transparent 38%),
 			radial-gradient(circle at 80% 25%, rgba(0, 180, 220, 0.4) 0%, transparent 42%),
 			radial-gradient(circle at 50% 75%, rgba(100, 220, 50, 0.45) 0%, transparent 48%),
 			linear-gradient(180deg, #FF69B4 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		padding: 120rpx 30rpx 40rpx 30rpx;
-		position: relative;
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		width: 100%;
+		height: 100vh;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		box-sizing: border-box;
 		animation: indexVibrancyShift 20s ease-in-out infinite;
+		overflow: hidden;
 	}
 
 	@keyframes indexVibrancyShift {
