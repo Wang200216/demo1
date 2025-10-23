@@ -108,42 +108,42 @@
 <style>
 	.container {
 		min-height: 100vh;
-		/* 高级深色背景 + 动态彩虹光线效果 */
+		/* 鲜艳活泼的彩虹渐变背景 + 高级光线效果 */
 		background:
-			radial-gradient(circle at 20% 15%, rgba(255, 100, 150, 0.35) 0%, transparent 35%),
-			radial-gradient(circle at 80% 25%, rgba(0, 180, 220, 0.3) 0%, transparent 40%),
-			radial-gradient(circle at 50% 75%, rgba(255, 200, 50, 0.25) 0%, transparent 45%),
-			linear-gradient(135deg, #0a1628 0%, #1a2a4a 25%, #2a1a3a 50%, #1a3a2a 75%, #1a1a2a 100%);
+			radial-gradient(circle at 20% 15%, rgba(255, 100, 150, 0.5) 0%, transparent 38%),
+			radial-gradient(circle at 80% 25%, rgba(0, 180, 220, 0.4) 0%, transparent 42%),
+			radial-gradient(circle at 50% 75%, rgba(100, 220, 50, 0.45) 0%, transparent 48%),
+			linear-gradient(180deg, #FF69B4 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		padding: 120rpx 30rpx 40rpx 30rpx;
 		position: relative;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		box-sizing: border-box;
-		animation: indexBackgroundShift 20s ease-in-out infinite;
+		animation: indexVibrancyShift 20s ease-in-out infinite;
 	}
 
-	@keyframes indexBackgroundShift {
+	@keyframes indexVibrancyShift {
 		0% {
 			background:
-				radial-gradient(circle at 20% 15%, rgba(255, 100, 150, 0.35) 0%, transparent 35%),
-				radial-gradient(circle at 80% 25%, rgba(0, 180, 220, 0.3) 0%, transparent 40%),
-				radial-gradient(circle at 50% 75%, rgba(255, 200, 50, 0.25) 0%, transparent 45%),
-				linear-gradient(135deg, #0a1628 0%, #1a2a4a 25%, #2a1a3a 50%, #1a3a2a 75%, #1a1a2a 100%);
+				radial-gradient(circle at 20% 15%, rgba(255, 100, 150, 0.5) 0%, transparent 38%),
+				radial-gradient(circle at 80% 25%, rgba(0, 180, 220, 0.4) 0%, transparent 42%),
+				radial-gradient(circle at 50% 75%, rgba(100, 220, 50, 0.45) 0%, transparent 48%),
+				linear-gradient(180deg, #FF69B4 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		}
 		50% {
 			background:
-				radial-gradient(circle at 25% 20%, rgba(255, 120, 170, 0.3) 0%, transparent 38%),
-				radial-gradient(circle at 75% 30%, rgba(0, 200, 240, 0.25) 0%, transparent 42%),
-				radial-gradient(circle at 50% 70%, rgba(255, 220, 70, 0.2) 0%, transparent 48%),
-				linear-gradient(135deg, #0f1a2e 0%, #1f3a5a 25%, #2f2a4a 50%, #1f4a3a 75%, #1f1f3a 100%);
+				radial-gradient(circle at 25% 20%, rgba(255, 120, 170, 0.45) 0%, transparent 40%),
+				radial-gradient(circle at 75% 30%, rgba(0, 200, 240, 0.35) 0%, transparent 44%),
+				radial-gradient(circle at 50% 70%, rgba(120, 240, 70, 0.4) 0%, transparent 50%),
+				linear-gradient(180deg, #FF69B4 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		}
 		100% {
 			background:
-				radial-gradient(circle at 20% 15%, rgba(255, 100, 150, 0.35) 0%, transparent 35%),
-				radial-gradient(circle at 80% 25%, rgba(0, 180, 220, 0.3) 0%, transparent 40%),
-				radial-gradient(circle at 50% 75%, rgba(255, 200, 50, 0.25) 0%, transparent 45%),
-				linear-gradient(135deg, #0a1628 0%, #1a2a4a 25%, #2a1a3a 50%, #1a3a2a 75%, #1a1a2a 100%);
+				radial-gradient(circle at 20% 15%, rgba(255, 100, 150, 0.5) 0%, transparent 38%),
+				radial-gradient(circle at 80% 25%, rgba(0, 180, 220, 0.4) 0%, transparent 42%),
+				radial-gradient(circle at 50% 75%, rgba(100, 220, 50, 0.45) 0%, transparent 48%),
+				linear-gradient(180deg, #FF69B4 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		}
 	}
 

@@ -1415,12 +1415,12 @@
 <style>
 	.home-container {
 		min-height: 100vh;
-		/* 高级深色背景配合动态渐变光线效果 */
+		/* 鲜艳活泼的彩虹渐变背景 + 高级光线效果 */
 		background:
-			radial-gradient(circle at 30% 15%, rgba(0, 180, 220, 0.4) 0%, transparent 35%),
-			radial-gradient(circle at 70% 35%, rgba(255, 100, 130, 0.3) 0%, transparent 40%),
-			radial-gradient(circle at 50% 85%, rgba(255, 140, 20, 0.25) 0%, transparent 45%),
-			linear-gradient(135deg, #0a1628 0%, #1a2a4a 30%, #2a1a3a 60%, #1a1a2a 100%);
+			radial-gradient(circle at 30% 15%, rgba(255, 100, 130, 0.5) 0%, transparent 40%),
+			radial-gradient(circle at 70% 35%, rgba(0, 180, 220, 0.4) 0%, transparent 45%),
+			radial-gradient(circle at 50% 85%, rgba(100, 220, 50, 0.45) 0%, transparent 50%),
+			linear-gradient(180deg, #FF1493 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		padding: 20rpx;
 		padding-top: 120rpx;
 		padding-bottom: 40rpx;
@@ -1429,31 +1429,31 @@
 		flex-direction: column;
 		position: relative;
 		overflow: hidden;
-		/* 微妙的动画背景 */
-		animation: subtleBackgroundShift 20s ease-in-out infinite;
+		/* 微妙的动画背景 - 保持彩虹色彩活力 */
+		animation: vibrancyBackgroundShift 20s ease-in-out infinite;
 	}
 
-	@keyframes subtleBackgroundShift {
+	@keyframes vibrancyBackgroundShift {
 		0% {
 			background:
-				radial-gradient(circle at 30% 15%, rgba(0, 180, 220, 0.4) 0%, transparent 35%),
-				radial-gradient(circle at 70% 35%, rgba(255, 100, 130, 0.3) 0%, transparent 40%),
-				radial-gradient(circle at 50% 85%, rgba(255, 140, 20, 0.25) 0%, transparent 45%),
-				linear-gradient(135deg, #0a1628 0%, #1a2a4a 30%, #2a1a3a 60%, #1a1a2a 100%);
+				radial-gradient(circle at 30% 15%, rgba(255, 100, 130, 0.5) 0%, transparent 40%),
+				radial-gradient(circle at 70% 35%, rgba(0, 180, 220, 0.4) 0%, transparent 45%),
+				radial-gradient(circle at 50% 85%, rgba(100, 220, 50, 0.45) 0%, transparent 50%),
+				linear-gradient(180deg, #FF1493 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		}
 		50% {
 			background:
-				radial-gradient(circle at 35% 20%, rgba(0, 200, 240, 0.35) 0%, transparent 40%),
-				radial-gradient(circle at 65% 30%, rgba(255, 120, 150, 0.25) 0%, transparent 38%),
-				radial-gradient(circle at 50% 80%, rgba(255, 160, 40, 0.2) 0%, transparent 48%),
-				linear-gradient(135deg, #0f1a2e 0%, #1f3a5a 30%, #2f2a4a 60%, #1f1f3a 100%);
+				radial-gradient(circle at 35% 20%, rgba(255, 120, 150, 0.45) 0%, transparent 42%),
+				radial-gradient(circle at 65% 30%, rgba(0, 200, 240, 0.35) 0%, transparent 48%),
+				radial-gradient(circle at 50% 80%, rgba(120, 240, 70, 0.4) 0%, transparent 52%),
+				linear-gradient(180deg, #FF1493 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		}
 		100% {
 			background:
-				radial-gradient(circle at 30% 15%, rgba(0, 180, 220, 0.4) 0%, transparent 35%),
-				radial-gradient(circle at 70% 35%, rgba(255, 100, 130, 0.3) 0%, transparent 40%),
-				radial-gradient(circle at 50% 85%, rgba(255, 140, 20, 0.25) 0%, transparent 45%),
-				linear-gradient(135deg, #0a1628 0%, #1a2a4a 30%, #2a1a3a 60%, #1a1a2a 100%);
+				radial-gradient(circle at 30% 15%, rgba(255, 100, 130, 0.5) 0%, transparent 40%),
+				radial-gradient(circle at 70% 35%, rgba(0, 180, 220, 0.4) 0%, transparent 45%),
+				radial-gradient(circle at 50% 85%, rgba(100, 220, 50, 0.45) 0%, transparent 50%),
+				linear-gradient(180deg, #FF1493 0%, #FF8C00 25%, #FFD700 50%, #32CD32 100%);
 		}
 	}
 	
