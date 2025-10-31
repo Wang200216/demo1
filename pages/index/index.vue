@@ -139,6 +139,7 @@
 	// #ifndef MP-WEIXIN
 	import lottieWeb from 'lottie-web'
 	// #endif
+	import { API_BASE_URL } from '@/config/server-mode.js'
 	export default {
 		components: {
 			DotLottieVue
@@ -489,7 +490,7 @@
 				console.log('UserInfo:', loginData.userInfo?.nickName)
 				
 			// 使用配置的API地址（开发环境使用本机 IP）
-			const apiBaseURL = 'http://192.168.31.249:8000' // ✅ 使用模拟服务器
+			const apiBaseURL = API_BASE_URL;
 				
 				const response = await uni.request({
 					url: `${apiBaseURL}/api/wechat-login`,

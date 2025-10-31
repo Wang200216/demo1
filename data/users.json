@@ -38,5 +38,35 @@
     "totalVotes": 0,
     "joinedDebates": 0,
     "status": "active"
+  },
+  {
+    "id": "mock_openid_1761813611968",
+    "nickName": "用户46",
+    "avatarUrl": "/static/logo.png",
+    "createdAt": "2025-10-30T08:40:11.968Z",
+    "updatedAt": "2025-10-30T08:40:11.968Z",
+    "totalVotes": 0,
+    "joinedDebates": 0,
+    "status": "active"
+  },
+  {
+    "id": "mock_openid_1761814634264",
+    "nickName": "微信用户",
+    "avatarUrl": "https://thirdwx.qlogo.cn/mmopen/vi_32/POgEwh4mIHO4nibH0KlMECNjjGxQUq24ZEaGT4poC6icRiccVGKSyXwibcPq4BWmiaIGuG1icwxaQX6grC9VemZoJ8rg/132",
+    "createdAt": "2025-10-30T08:57:14.266Z",
+    "updatedAt": "2025-10-30T08:57:14.266Z",
+    "totalVotes": 0,
+    "joinedDebates": 0,
+    "status": "active"
+  },
+  {
+    "id": "mock_openid_1761818721297",
+    "nickName": "用户402",
+    "avatarUrl": "/static/logo.png",
+    "createdAt": "2025-10-30T10:05:21.300Z",
+    "updatedAt": "2025-10-30T10:05:21.300Z",
+    "totalVotes": 0,
+    "joinedDebates": 0,
+    "status": "active"
   }
 ]

@@ -1,14 +1,15 @@
 const express = require('express');
+const app = express();
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const https = require('https');
 const http = require('http');
 const { v4: uuidv4 } = require('uuid');
-const { getCurrentServerConfig, printConfig } = require('./config/server-mode.js');
+const serverCfg = require('./config/server-mode.node.js');
+const { getCurrentServerConfig, printConfig } = serverCfg;
 
-const app = express();
-const serverConfig = getCurrentServerConfig();
-const port = serverConfig.mode === 'mock' ? serverConfig.port : 8000;
+const currentConfig = getCurrentServerConfig();
+const port = currentConfig.mode === 'mock' ? currentConfig.port : 8000;
 
 // ==================== WebSocket 支持 ====================
 // 尝试加载 ws 模块（如果未安装需要运行: npm install ws）
@@ -1425,9 +1426,9 @@ function callWechatAPI(appid, secret, code) {
 
 // 微信配置（从统一配置文件获取）
 const WECHAT_CONFIG = {
-    appid: serverConfig.wechat.appid,
-    secret: process.env.WECHAT_SECRET || serverConfig.wechat.secret,
-    useMock: serverConfig.wechat.useMock
+    appid: currentConfig.wechat.appid,
+    secret: process.env.WECHAT_SECRET || currentConfig.wechat.secret,
+    useMock: currentConfig.wechat.useMock
 };
 
 // 微信登录接口
@@ -1634,7 +1635,7 @@ server.listen(port, '0.0.0.0', () => {
     console.log('');
     
     // 只在模拟模式下启动模拟数据
-    if (serverConfig.mode === 'mock') {
+    if (currentConfig.mode === 'mock') {
         simulateVoteChanges();
         simulateNewAIContent();
         console.log('🤖 模拟数据生成器已启动');

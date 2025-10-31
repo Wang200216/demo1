@@ -7,11 +7,12 @@
  */
 
 import apiInterceptor from './api-interceptor.js';
+import { API_BASE_URL } from '@/config/server-mode.js';
 
 // 从配置文件获取当前服务器地址
 // 注意：这里使用固定地址，因为 uni-app 可能不支持动态 require
 // 如需切换，请修改 config/server-mode.js 后重新编译
-const currentUrl = 'http://192.168.31.249:8000'; // 将由构建工具替换
+const currentUrl = API_BASE_URL;
 
 // 内联配置，避免导入问题
 const API_CONFIG = {

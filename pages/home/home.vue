@@ -534,6 +534,7 @@
 	
 	// 导入直播配置
 	import liveConfig from '@/config/live-config.js'
+	import { API_BASE_URL } from '@/config/server-mode.js';
 
 	export default {
 		components: {
@@ -709,7 +710,7 @@
 			// 获取系统信息，适配安全区域
 			this.getSystemInfo();
 			// 初始化预设观点
-			this.updateInitialVotes();
+			if (typeof this.updateInitialVotes === 'function') this.updateInitialVotes();
 			// 初始化预设观点对抗条
 			this.updatePresetBattleBar();
 			// 启动特效性能优化
@@ -717,12 +718,18 @@
 
 			// 页面一进入就获取辩题（关键修正）
 			this.fetchDebateTopic();
+
+			// ================= 自助自动拉取直播状态 =================
+			if (typeof this.fetchLiveStatus === 'function') this.fetchLiveStatus();
 		},
 		onShow() {
 			// 页面显示时，确保导航栏选中状态正确
 			this.currentTab = 'home';
 			// 再次确保切回可见时也是最新辩题
 			this.fetchDebateTopic();
+
+			// ================= 自助自动拉取直播状态 =================
+			if (typeof this.fetchLiveStatus === 'function') this.fetchLiveStatus();
 		},
 		onUnload() {
 			// 页面卸载时清理定时器
@@ -831,7 +838,7 @@
 
 		// 获取服务器 URL（兼容旧代码）
 		getServerUrl() {
-			return this.serverUrl || 'http://192.168.31.249:8000';
+			return this.serverUrl || API_BASE_URL;
 		},
 
 			// 处理直播状态变化
@@ -2380,7 +2387,6 @@
 		}
 	}
 </script>
-
 <style>
 	.home-container {
 		min-height: 100vh;
@@ -3177,7 +3183,6 @@
 			transform: translate3d(-50%, -50%, 0) scale(1);
 		}
 	}
-
 	.flame-container {
 		position: relative;
 		width: 100%;
@@ -3965,7 +3970,6 @@
 		letter-spacing: 0.2rpx;
 		line-height: 1.5;
 	}
-
 	/* 对抗条和投票区域 */
 	.battle-section {
 		background-color: #FFFFFF !important;
@@ -3980,7 +3984,6 @@
 		position: relative;
 		z-index: 10;
 	}
-
 	/* 对抗条 */
 	.battle-bar {
 		height: 80rpx;
@@ -4737,7 +4740,6 @@
 		background-size: 200% 200%;
 		animation: rightVoteEffectPro 1s cubic-bezier(0.68, -0.55, 0.265, 1.55), gradientShift 2s ease infinite;
 	}
-
 	@keyframes rightVoteEffectPro {
 		0% {
 			transform: scale(1) rotate(0deg) skewY(0deg);
@@ -4780,7 +4782,6 @@
 			box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.4);
 		}
 	}
-
 	/* 已投票按钮的特殊效果（强化版） */
 	.vote-btn.voted.click-effect {
 		background: linear-gradient(135deg, #FFD700, #FFA500, #FF8C00);
@@ -5524,7 +5525,6 @@
 			filter: blur(3px) brightness(0.5);
 		}
 	}
-
 	/* 增强的向上飘动动画 - 右侧（带相反的旋转） */
 	@keyframes floatUpWithWobbleRight {
 		0% {
@@ -6320,7 +6320,6 @@
 	.comment-confirm-btn.disabled:active {
 		transform: none;
 	}
-
 	.comment-confirm-btn::before {
 		content: '';
 		position: absolute;
