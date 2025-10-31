@@ -15,7 +15,7 @@
  * true: 使用本地模拟服务器 (开发测试用)
  * false: 使用真实后端服务器 (生产环境)
  */
-const USE_MOCK_SERVER = true;
+const USE_MOCK_SERVER = false; // 使用真实服务器
 
 /**
  * 真实服务器地址
@@ -107,6 +107,6 @@ const printConfig = () => {
 // ==================== 导出配置 ====================
 
 // === 只改这一行即可一键切换全局API ===
-//export const API_BASE_URL = LOCAL_SERVER_URL; // 本地调试就用 LOCAL_SERVER_URL
-export const API_BASE_URL = REAL_SERVER_URL; // 上线或体验版就用 REAL_SERVER_URL
+// export const API_BASE_URL = LOCAL_SERVER_URL; // 本地调试就用 LOCAL_SERVER_URL (http://localhost:8000)
+export const API_BASE_URL = REAL_SERVER_URL; // 上线或体验版就用 REAL_SERVER_URL (http://192.168.31.189:8000)
 

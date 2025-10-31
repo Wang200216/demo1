@@ -1,5 +1,5 @@
 // config/server-mode.node.js (Node.js后端专用)
-const USE_MOCK_SERVER = true;
+const USE_MOCK_SERVER = false; // 改为 false 使用真实服务器
 const LOCAL_SERVER_URL = 'http://localhost:8000';
 const REAL_SERVER_URL = 'http://192.168.31.189:8000';
 const REAL_SERVER_PORT = 8000;
@@ -51,6 +51,10 @@ const printConfig = () => {
         console.log(`局域网访问: ${config.url}`);
     }
     console.log(`微信登录: ${config.wechat.useMock ? '模拟模式' : '真实模式'}`);
+    if (!config.wechat.useMock) {
+        console.log(`微信 AppID: ${config.wechat.appid}`);
+        console.log(`微信 Secret: ${config.wechat.secret ? config.wechat.secret.substring(0, 8) + '...' : '未设置'}`);
+    }
     console.log('═══════════════════════════════════════');
 };
 module.exports = {

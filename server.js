@@ -162,7 +162,13 @@ function handleDebateUpdate(data) {
 	});
 }
 
-app.use(cors());
+// CORS 配置 - 允许所有来源（开发环境）
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    credentials: true
+}));
 app.use(express.json());
 
 // ==================== 后台管理路由（必须在代理之前） ====================
@@ -450,6 +456,7 @@ function stopLive() {
 		console.log('🛑 直播已停止');
 }
 
+// 管理端直播控制接口（管理员专用）
 app.post('/api/admin/live/control', (req, res) => {
 	try {
 		const { action, streamUrl } = req.body;
@@ -484,6 +491,97 @@ app.post('/api/admin/live/control', (req, res) => {
 	} catch (error) {
 		console.error('控制直播状态失败:', error);
 		res.status(500).json({ error: '操作失败' });
+	}
+});
+
+// 公开的直播控制接口（用户可直接调用）
+app.post('/api/live/control', (req, res) => {
+	try {
+		const { action, streamId } = req.body;
+		
+		if (action === 'start') {
+			const db = require('./admin/db.js');
+			let selectedStream = null;
+			
+			// 如果指定了streamId，使用指定的直播流
+			if (streamId) {
+				selectedStream = db.streams.getById(streamId);
+				if (!selectedStream) {
+					return res.status(400).json({ 
+						success: false,
+						message: '指定的直播流不存在' 
+					});
+				}
+				if (!selectedStream.enabled) {
+					return res.status(400).json({ 
+						success: false,
+						message: '指定的直播流未启用' 
+					});
+				}
+			} else {
+				// 否则使用启用的直播流
+				selectedStream = db.streams.getActive();
+				if (!selectedStream) {
+					return res.status(400).json({ 
+						success: false,
+						message: '没有可用的直播流，请先在后台管理系统中配置直播流' 
+					});
+				}
+			}
+			
+			// 开始直播
+			globalLiveStatus.isLive = true;
+			globalLiveStatus.streamUrl = selectedStream.url;
+			globalLiveStatus.streamId = selectedStream.id;
+			globalLiveStatus.isScheduled = false;
+			globalLiveStatus.scheduledStartTime = null;
+			globalLiveStatus.scheduledEndTime = null;
+			
+			// 清除之前的计划
+			db.liveSchedule.clear();
+			
+			// 广播直播状态变化
+			broadcast('live-status-changed', {
+				status: 'started',
+				streamUrl: globalLiveStatus.streamUrl,
+				timestamp: Date.now(),
+				startedBy: 'user'
+			});
+			
+			console.log('✅ 用户启动直播:', selectedStream.name, selectedStream.url);
+			
+			res.json({ 
+				success: true, 
+				message: '直播已开始',
+				data: {
+					status: 'started',
+					streamUrl: globalLiveStatus.streamUrl,
+					streamId: selectedStream.id,
+					streamName: selectedStream.name
+				}
+			});
+		} else if (action === 'stop') {
+			stopLive();
+			console.log('✅ 用户停止直播');
+			res.json({ 
+				success: true, 
+				message: '直播已停止',
+				data: {
+					status: 'stopped'
+				}
+			});
+		} else {
+			res.status(400).json({ 
+				success: false,
+				message: '无效的操作，action 必须是 "start" 或 "stop"' 
+			});
+		}
+	} catch (error) {
+		console.error('用户控制直播状态失败:', error);
+		res.status(500).json({ 
+			success: false,
+			message: '操作失败: ' + error.message 
+		});
 	}
 });
 
@@ -1347,6 +1445,8 @@ app.delete('/api/comment/:commentId', (req, res) => {
 
 // 点赞
 app.post('/api/like', (req, res) => {
+    console.log('✅ /api/like 路由被调用');
+    console.log('📥 请求参数:', { contentId: req.body.contentId, commentId: req.body.commentId });
     const { contentId, commentId } = req.body;
 
     // 参数验证
@@ -1456,7 +1556,7 @@ app.post('/api/wechat-login', async (req, res) => {
         
         // 根据配置决定使用模拟模式还是真实微信API
         if (WECHAT_CONFIG.useMock) {
-            // 使用模拟模式（用于开发测试）
+            // 使用模拟模式（用于开发测试或 H5 环境）
             console.log('✅ 使用模拟微信登录响应（开发模式）');
             
             // 模拟微信API响应
@@ -1476,14 +1576,31 @@ app.post('/api/wechat-login', async (req, res) => {
             console.log('AppID:', WECHAT_CONFIG.appid);
             
             try {
+                console.log('📋 微信登录配置信息:');
+                console.log('  - AppID:', WECHAT_CONFIG.appid);
+                console.log('  - Secret:', WECHAT_CONFIG.secret ? WECHAT_CONFIG.secret.substring(0, 8) + '...' : '未设置');
+                console.log('  - Code:', code ? code.substring(0, 20) + '...' : '未提供');
+                
                 const apiResult = await callWechatAPI(WECHAT_CONFIG.appid, WECHAT_CONFIG.secret, code);
                 
                 // 检查微信API返回的错误
                 if (apiResult.errcode) {
-                    console.error('微信API返回错误:', apiResult);
+                    console.error('❌ 微信API返回错误:');
+                    console.error('  - 错误码:', apiResult.errcode);
+                    console.error('  - 错误信息:', apiResult.errmsg);
+                    console.error('  - 完整响应:', JSON.stringify(apiResult, null, 2));
+                    
+                    // 特殊处理常见错误
+                    let errorMessage = `微信API错误: ${apiResult.errmsg || '未知错误'}, rid: ${apiResult.errcode || 'N/A'}`;
+                    if (apiResult.errcode === 40029) {
+                        errorMessage = '微信API错误: invalid code (code无效或已过期), rid: ' + apiResult.errcode;
+                    } else if (apiResult.errcode === 40163) {
+                        errorMessage = '微信API错误: code been used (code已被使用), rid: ' + apiResult.errcode;
+                    }
+                    
                     return res.status(400).json({
                         success: false,
-                        message: `微信登录失败: ${apiResult.errmsg || '未知错误'} (错误码: ${apiResult.errcode})`
+                        message: errorMessage
                     });
                 }
                 
@@ -1554,6 +1671,17 @@ app.post('/api/wechat-login', async (req, res) => {
 
 // 用户投票
 app.post('/api/user-vote', (req, res) => {
+    console.log('═══════════════════════════════════════');
+    console.log('✅ /api/user-vote 路由被调用');
+    console.log('📥 请求来源:', req.headers.origin || req.headers.referer || '未知');
+    console.log('📥 请求方法:', req.method);
+    console.log('📥 请求参数:', { side: req.body.side, votes: req.body.votes });
+    console.log('📥 请求头:', {
+        'content-type': req.headers['content-type'],
+        'user-agent': req.headers['user-agent']?.substring(0, 50) + '...'
+    });
+    console.log('═══════════════════════════════════════');
+    
     const { side, votes } = req.body;
 
     // 参数验证

@@ -50,8 +50,16 @@ const getCurrentConfig = () => {
 class ApiService {
   constructor() {
     this.config = getCurrentConfig();
-    this.baseURL = this.config.current;
+    // 强制使用 API_BASE_URL，确保使用配置文件中的地址
+    this.baseURL = API_BASE_URL || this.config.current || 'http://localhost:8000';
     this.timeout = 10000; // 10秒超时
+    
+    // 调试日志：显示初始化的服务器地址
+    if (typeof console !== 'undefined') {
+      console.log('🔧 ApiService 初始化');
+      console.log('📡 API_BASE_URL:', API_BASE_URL);
+      console.log('📡 this.baseURL:', this.baseURL);
+    }
   }
 
   /**
@@ -59,7 +67,14 @@ class ApiService {
    * @param {string} serverUrl - 新的服务器地址
    */
   updateConfig(serverUrl) {
-    this.baseURL = serverUrl;
+    // 如果传入的是空值，使用配置文件中的默认地址
+    this.baseURL = serverUrl || API_BASE_URL || 'http://localhost:8000';
+    
+    // 调试日志
+    if (typeof console !== 'undefined') {
+      console.log('🔧 ApiService.updateConfig 被调用');
+      console.log('📡 新地址:', this.baseURL);
+    }
   }
 
   /**
@@ -77,13 +92,50 @@ class ApiService {
     } = options;
 
     // 构建完整URL
-    const fullUrl = url.startsWith('http') ? url : `${this.baseURL}${url}`;
+    // 确保使用最新的 baseURL（如果被 updateConfig 更新过）
+    const baseUrl = this.baseURL || API_BASE_URL || 'http://localhost:8000';
+    const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+    
+    // 调试日志（开发环境）
+    if (process.env.NODE_ENV === 'development' && typeof console !== 'undefined') {
+      console.log(`📤 API请求: ${method} ${fullUrl}`);
+    }
+
+    // 获取 token（从本地存储）
+    let authToken = null;
+    try {
+      // 优先使用 uni.getStorageSync（适用于小程序和 APP）
+      if (typeof uni !== 'undefined' && uni.getStorageSync) {
+        authToken = uni.getStorageSync('authToken');
+      }
+      // 如果 uni 不可用，尝试使用 localStorage（适用于 H5）
+      if (!authToken && typeof localStorage !== 'undefined') {
+        authToken = localStorage.getItem('authToken');
+      }
+    } catch (error) {
+      // 获取 token 失败，忽略
+      console.log('获取 token 失败:', error);
+    }
+    
+    // 调试日志：显示是否找到 token
+    if (typeof console !== 'undefined' && process.env.NODE_ENV === 'development') {
+      if (authToken) {
+        console.log('✅ 已找到认证 token，将添加到请求头');
+      } else {
+        console.log('⚠️  未找到认证 token');
+      }
+    }
 
     // 默认请求头
     const defaultHeaders = {
       'Content-Type': 'application/json',
       ...headers
     };
+    
+    // 如果存在 token，添加到请求头
+    if (authToken) {
+      defaultHeaders['Authorization'] = `Bearer ${authToken}`;
+    }
 
     // 构建请求配置
     const requestConfig = {
@@ -102,9 +154,21 @@ class ApiService {
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return response.data;
       } else {
-        const error = new Error(`HTTP ${response.statusCode}: ${response.data?.message || '请求失败'}`);
+        // 详细记录错误信息
+        console.error('❌ API请求失败:', {
+          url: fullUrl,
+          method: method,
+          statusCode: response.statusCode,
+          response: response.data,
+          responseString: JSON.stringify(response.data, null, 2),
+          headers: response.header || response.headers
+        });
+        
+        const error = new Error(`HTTP ${response.statusCode}: ${response.data?.message || response.data || '请求失败'}`);
         error.statusCode = response.statusCode;
         error.response = response.data;
+        error.url = fullUrl;
+        error.method = method;
         throw error;
       }
     }, requestConfig);
@@ -116,10 +180,24 @@ class ApiService {
    * @returns {string} 错误信息
    */
   handleError(error) {
+    // 检查状态码
+    if (error.statusCode === 403) {
+      return '服务器拒绝请求（403），可能是权限或CORS配置问题。请检查服务器配置。';
+    } else if (error.statusCode === 401) {
+      return '未授权（401），请先登录';
+    } else if (error.statusCode === 404) {
+      return '接口不存在（404），请检查API地址';
+    } else if (error.statusCode === 500) {
+      return '服务器内部错误（500），请稍后重试';
+    }
+    
+    // 检查错误消息
     if (error.message.includes('timeout')) {
       return '请求超时，请检查网络连接';
     } else if (error.message.includes('network')) {
       return '网络连接失败，请检查网络设置';
+    } else if (error.message.includes('403')) {
+      return '服务器拒绝请求（403），可能是权限或CORS配置问题';
     } else if (error.message.includes('404')) {
       return '接口不存在，请检查API地址';
     } else if (error.message.includes('500')) {
@@ -153,14 +231,97 @@ class ApiService {
       throw new Error('投票方必须是 "left" 或 "right"');
     }
 
-    return await this.request({
-      url: '/api/user-vote',
-      method: 'POST',
-      data: {
-        side,
-        votes: parseInt(votes) || 10
+    // 确保 votes 是整数且在有效范围内
+    // 注意：由于服务器要求总和为100，单方票数最大为100
+    const voteCount = parseInt(votes, 10);
+    if (isNaN(voteCount) || voteCount < 0 || voteCount > 100) {
+      throw new Error('投票数量必须在 0-100 之间（总和必须为100）');
+    }
+
+    // 尝试从本地存储获取用户ID（如果存在）
+    let userId = null;
+    try {
+      if (typeof uni !== 'undefined' && uni.getStorageSync) {
+        const currentUser = uni.getStorageSync('currentUser');
+        if (currentUser && currentUser.id) {
+          userId = currentUser.id;
+        }
+      } else if (typeof localStorage !== 'undefined') {
+        const currentUserStr = localStorage.getItem('currentUser');
+        if (currentUserStr) {
+          try {
+            const currentUser = JSON.parse(currentUserStr);
+            if (currentUser && currentUser.id) {
+              userId = currentUser.id;
+            }
+          } catch (e) {
+            // 解析失败，忽略
+          }
+        }
       }
-    });
+    } catch (error) {
+      // 获取用户ID失败，忽略
+    }
+
+    // 服务器期望的格式：{ leftVotes: number, rightVotes: number }
+    // 服务器要求：leftVotes + rightVotes 必须等于 100
+    // 根据 side 参数设置对应的票数，另一方的票数 = 100 - 当前票数
+    const totalRequired = 100;
+    let leftVotes, rightVotes;
+    
+    if (side === 'left') {
+      // 投正方：leftVotes = voteCount, rightVotes = 100 - voteCount
+      leftVotes = voteCount;
+      rightVotes = totalRequired - voteCount;
+    } else {
+      // 投反方：rightVotes = voteCount, leftVotes = 100 - voteCount
+      rightVotes = voteCount;
+      leftVotes = totalRequired - voteCount;
+    }
+    
+    // 确保票数在有效范围内
+    if (leftVotes < 0 || leftVotes > totalRequired || rightVotes < 0 || rightVotes > totalRequired) {
+      throw new Error(`投票数量无效：单方票数必须在 0-100 之间，总和必须为 ${totalRequired}`);
+    }
+    
+    const requestData = {
+      leftVotes: leftVotes,
+      rightVotes: rightVotes
+    };
+
+    // 如果找到用户ID，添加到请求中
+    if (userId) {
+      requestData.userId = String(userId);
+    }
+
+    console.log('📤 投票请求数据 (服务器格式):', JSON.stringify(requestData, null, 2));
+    console.log('📤 原始参数:', { side, votes: voteCount });
+
+    try {
+      const response = await this.request({
+        url: '/api/user-vote',
+        method: 'POST',
+        data: requestData
+      });
+      return response;
+    } catch (error) {
+      // 详细记录错误信息
+      console.error('❌ 投票请求失败详细信息:', {
+        statusCode: error.statusCode,
+        message: error.message,
+        response: error.response,
+        url: error.url,
+        requestData: requestData
+      });
+      
+      // 如果服务器返回了错误消息，在控制台详细显示
+      if (error.response && error.response.message) {
+        console.error('📋 服务器错误消息:', error.response.message);
+        console.error('📋 服务器完整响应:', JSON.stringify(error.response, null, 2));
+      }
+      
+      throw error;
+    }
   }
 
   // ==================== AI内容接口 ====================
@@ -331,6 +492,46 @@ class ApiService {
    */
   async getLiveStatus() {
     return this.request({ url: '/api/admin/live/status', method: 'GET' });
+  }
+
+  /**
+   * 控制直播（用户直接控制）
+   * @param {string} action - 'start' 或 'stop'
+   * @param {string} streamId - 可选的直播流ID，不传则使用默认启用的直播流
+   * @returns {Promise<Object>} 操作结果
+   */
+  async controlLive(action, streamId = null) {
+    if (!action || !['start', 'stop'].includes(action)) {
+      throw new Error('action 必须是 "start" 或 "stop"');
+    }
+
+    const data = { action };
+    if (streamId) {
+      data.streamId = streamId;
+    }
+
+    return this.request({
+      url: '/api/live/control',
+      method: 'POST',
+      data
+    });
+  }
+
+  /**
+   * 开始直播（用户直接调用）
+   * @param {string} streamId - 可选的直播流ID
+   * @returns {Promise<Object>} 操作结果
+   */
+  async startLive(streamId = null) {
+    return this.controlLive('start', streamId);
+  }
+
+  /**
+   * 停止直播（用户直接调用）
+   * @returns {Promise<Object>} 操作结果
+   */
+  async stopLive() {
+    return this.controlLive('stop');
   }
 }
 

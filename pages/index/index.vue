@@ -337,58 +337,45 @@
 				console.log('登录成功:', userInfoRes.userInfo)
 				
 				// #endif
-				
-				// #ifndef MP-WEIXIN
-				// H5或其他环境：使用模拟登录
-				console.log('当前不在微信小程序环境，使用模拟登录')
-				
-				// 1. 创建模拟 code
-				const mockCode = 'mock_code_' + Date.now()
-				
-				// 📋 打印模拟的 Code（H5 环境）
-				console.log('%c═══════════════════════════════════════', 'color: #FF9800; font-weight: bold; font-size: 14px;')
-				console.log('%c 模拟登录 CODE 已生成 (H5环境) ', 'background: #FF9800; color: white; font-weight: bold; padding: 5px 10px; border-radius: 3px;')
-				console.log('%c═══════════════════════════════════════', 'color: #FF9800; font-weight: bold; font-size: 14px;')
-				console.log('%c Mock Code:', 'color: #FF6B9D; font-weight: bold; font-size: 14px;', mockCode)
-				console.log('%c═══════════════════════════════════════', 'color: #FF9800; font-weight: bold; font-size: 14px;')
-				
-				// 2. 使用传入的用户信息或默认用户信息
-				const mockUserInfo = userInfoRes?.userInfo || {
-					nickName: '测试用户',
-					avatarUrl: '/static/logo.png'
-				}
-				
-				// 3. 发送到服务器（服务器会返回模拟响应）
-				serverRes = await this.sendToServer({
-					code: mockCode,
-					userInfo: mockUserInfo,
-					encryptedData: userInfoRes?.encryptedData || '',
-					iv: userInfoRes?.iv || ''
+			
+			// 保存用户信息到本地（仅微信小程序环境）
+			// #ifdef MP-WEIXIN
+			this.userInfo = currentUserInfo
+			this.hasUserInfo = true
+			uni.setStorageSync('userInfo', currentUserInfo)
+			uni.setStorageSync('loginCode', loginCode)
+			
+			// 保存 token 和用户信息
+			if (serverRes?.data?.token) {
+				uni.setStorageSync('authToken', serverRes.data.token);
+			}
+			if (serverRes?.data?.user) {
+				uni.setStorageSync('currentUser', serverRes.data.user);
+			}
+			
+			console.log('登录成功，用户信息已保存')
+			console.log('✅ Token:', serverRes?.data?.token ? '已保存' : '未找到')
+			
+			// 5. 跳转到首页
+			setTimeout(() => {
+				this.isLoading = false
+				uni.redirectTo({
+					url: '/pages/home/home'
 				})
-				
-				// 4. 保存登录信息
-				loginCode = mockCode
-				currentUserInfo = mockUserInfo
-				
-				console.log('模拟登录成功:', mockUserInfo)
-				
-				// #endif
-				
-				// 保存用户信息到本地（所有环境通用）
-				this.userInfo = currentUserInfo
-				this.hasUserInfo = true
-				uni.setStorageSync('userInfo', currentUserInfo)
-				uni.setStorageSync('loginCode', loginCode)
-				
-				console.log('登录成功，用户信息已保存')
-				
-				// 5. 跳转到首页（所有环境通用）
-				setTimeout(() => {
-					this.isLoading = false
-					uni.redirectTo({
-						url: '/pages/home/home'
-					})
-				}, 1000)
+			}, 1000)
+			// #endif
+			
+			// #ifndef MP-WEIXIN
+			// H5或其他环境：无法获取真实微信 code，提示用户
+			console.error('⚠️  当前不在微信小程序环境，无法获取真实的微信登录 code')
+			
+			this.isLoading = false
+			uni.showToast({
+				title: '微信登录功能仅在微信小程序环境中可用，请在微信小程序中打开此应用',
+				icon: 'none',
+				duration: 3000
+			})
+			// #endif
 				
 			} catch (error) {
 				console.error('微信登录失败:', error)
@@ -489,8 +476,13 @@
 				console.log('Code (前15位):', loginData.code?.substring(0, 15) + '...')
 				console.log('UserInfo:', loginData.userInfo?.nickName)
 				
-			// 使用配置的API地址（开发环境使用本机 IP）
-			const apiBaseURL = API_BASE_URL;
+			// 使用配置的API地址（强制使用本地服务器）
+			const apiBaseURL = API_BASE_URL || 'http://localhost:8000';
+			
+			// 调试日志：显示使用的服务器地址
+			console.log('📡 API_BASE_URL 值:', API_BASE_URL);
+			console.log('📡 实际使用的服务器地址:', apiBaseURL);
+			console.log('📡 完整请求URL:', `${apiBaseURL}/api/wechat-login`);
 				
 				const response = await uni.request({
 					url: `${apiBaseURL}/api/wechat-login`,
@@ -506,6 +498,12 @@
 				console.log('服务器响应数据:', response.data)
 				
 				if (response.statusCode === 200 && response.data && response.data.success) {
+					// 保存 token 到本地存储
+					const token = response.data.data?.token;
+					if (token) {
+						uni.setStorageSync('authToken', token);
+						console.log('✅ Token 已保存到本地存储');
+					}
 					return response.data
 				} else {
 					// 提取错误信息

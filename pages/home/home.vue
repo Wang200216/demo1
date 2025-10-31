@@ -783,20 +783,36 @@
 			// 初始化API服务
 			async initApiService() {
 				try {
+					// 将导入的 apiService 赋值给 this.apiService，方便在方法中使用
+					this.apiService = apiService;
+					
+					// 从配置文件获取当前服务器地址
+					const configUrl = API_BASE_URL || 'http://localhost:8000';
+					
+					// 更新API服务配置为本地服务器
+					apiService.updateConfig(configUrl);
+					
 					// 获取当前服务器信息
 					this.apiServerInfo = apiService.getCurrentServerInfo();
-					this.serverUrl = this.apiServerInfo.current;
+					this.serverUrl = configUrl; // 使用配置的地址
 					this.availableServers = this.apiServerInfo.available;
 					
-					// 更新API服务配置
-					apiService.updateConfig(this.serverUrl);
+					// 确保 this.apiService 也使用正确的地址
+					this.apiService = apiService;
 					
-					// API服务初始化完成
+					console.log('✅ API服务初始化完成');
+					console.log('📡 当前服务器地址:', configUrl);
+					console.log('📡 apiService.baseURL:', apiService.baseURL);
 					
 					// 测试API连接
 					const isConnected = await apiService.testConnection();
+					if (isConnected) {
+						console.log('✅ API连接测试成功');
+					} else {
+						console.warn('⚠️ API连接测试失败，请检查服务器是否运行');
+					}
 				} catch (error) {
-					console.error('API服务初始化失败:', error);
+					console.error('❌ API服务初始化失败:', error);
 				}
 			},
 
@@ -903,23 +919,40 @@
 
 			async fetchTopBarVotes() {
 				try {
-					const response = await apiService.getVotes();
+					// 确保使用正确的 apiService（优先使用 this.apiService，如果没有则使用导入的）
+					const service = this.apiService || apiService;
+					
+					// 调试日志：检查当前使用的服务器地址
+					console.log('📊 获取票数 - 使用服务器:', service.baseURL || service.getCurrentConfig?.()?.baseURL || '未设置');
+					
+					const response = await service.getVotes();
 					if (response.success) {
 						const data = response.data;
 						this.topLeftVotes = data.leftVotes;
 						this.topRightVotes = data.rightVotes;
+						console.log('✅ 票数更新成功:', data);
+					} else {
+						console.warn('⚠️ 获取票数失败:', response);
 					}
 				} catch (error) {
+					console.error('❌ 获取票数失败:', error);
 					uni.showToast({
-						title: '获取票数失败',
-						icon: 'error'
+						title: '获取票数失败: ' + (error.message || '网络错误'),
+						icon: 'error',
+						duration: 3000
 					});
 				}
 			},
 
 			async fetchAIContent(isInitialLoad = false) {
 				try {
-					const response = await apiService.getAiContent();
+					// 确保使用正确的 apiService（优先使用 this.apiService，如果没有则使用导入的）
+					const service = this.apiService || apiService;
+					
+					// 调试日志：检查当前使用的服务器地址
+					console.log('🤖 获取AI内容 - 使用服务器:', service.baseURL || service.getCurrentConfig?.()?.baseURL || '未设置');
+					
+					const response = await service.getAiContent();
 					
 					if (response.success) {
 						// 如果是初始加载，清空原有数据
@@ -953,21 +986,76 @@
 				const startTime = Date.now();
 				
 				try {
+					console.log('📤 发送投票请求:', { side, votes });
+					console.log('📡 API服务器地址:', this.apiService?.baseURL || '未设置');
+					
 					const response = await apiService.userVote(side, votes);
+					
+					// 详细记录响应信息
+					console.log('📥 投票接口响应:', {
+						response: response,
+						responseType: typeof response,
+						hasSuccess: 'success' in (response || {}),
+						successValue: response?.success,
+						responseString: JSON.stringify(response, null, 2)
+					});
 					
 					const responseTime = Date.now() - startTime;
 					
 					// 更新性能统计
 					this.updatePerformanceStats(responseTime);
 					
-					if (response.success) {
+					// 判断请求是否成功：
+					// 1. 如果响应有 success 字段，检查其值
+					// 2. 如果没有 success 字段，但也没有抛出异常，说明接口调用成功（HTTP 200）
+					// 3. 接口返回成功（没有抛出异常），就认为投票成功
+					const isSuccess = response?.success === true || 
+					                 (response?.success === undefined && response !== undefined);
+					
+					if (isSuccess) {
+						console.log('✅ 投票成功:', response?.data || response);
 						// 延迟1秒后获取最新的票数统计（防抖处理）
 						this.debouncedFetchVoteData();
+						return { success: true, data: response?.data || response };
+					} else {
+						// 如果响应明确表示失败，抛出错误
+						console.warn('⚠️ 投票响应表示失败:', response);
+						const error = new Error(response?.message || '投票失败');
+						error.response = response;
+						throw error;
 					}
 				} catch (error) {
+					console.error('❌ 投票失败:', error);
+					console.error('❌ 错误详情:', {
+						statusCode: error.statusCode,
+						message: error.message,
+						url: error.url,
+						response: error.response
+					});
+					
+					// 根据错误类型显示不同的提示
+					let errorMessage = '投票失败';
+					if (error.statusCode === 400) {
+						// 400 错误可能是参数验证失败
+						const serverMessage = error.response?.message || error.message || '参数错误';
+						errorMessage = `请求参数错误：${serverMessage}`;
+						console.error('📋 服务器返回的详细错误信息:', error.response);
+					} else if (error.statusCode === 403) {
+						errorMessage = '服务器拒绝请求（403），请检查服务器CORS配置';
+					} else if (error.statusCode === 401) {
+						errorMessage = '未授权（401），请先登录';
+					} else if (error.statusCode === 404) {
+						errorMessage = '接口不存在（404）';
+					} else if (error.statusCode === 500) {
+						errorMessage = '服务器内部错误（500）';
+					} else if (error.message) {
+						errorMessage = apiService.handleError(error);
+					}
+					
 					uni.showToast({
-						title: '投票失败',
-						icon: 'error'
+						title: errorMessage,
+						icon: 'error',
+						duration: 3000
 					});
 				}
 			},
@@ -1058,31 +1146,135 @@
 				}
 			},
 			
-			async addCommentToServer(contentId, user, text, avatar) {
+			async addCommentToServer(contentId, text, user = '匿名用户', avatar = '👤') {
 				try {
+					console.log('📤 调用 addComment API:', { contentId, text, user, avatar });
 					const response = await apiService.addComment(contentId, text, user, avatar);
-					if (response.success) {
-						return response.data;
+					
+					// 详细记录响应信息
+					console.log('📥 评论接口响应:', {
+						response: response,
+						responseType: typeof response,
+						hasSuccess: 'success' in (response || {}),
+						successValue: response?.success,
+						responseString: JSON.stringify(response, null, 2)
+					});
+					
+					// 判断请求是否成功：
+					// 1. 如果响应有 success 字段，检查其值
+					// 2. 如果没有 success 字段，但也没有抛出异常，说明接口调用成功（HTTP 200）
+					const isSuccess = response?.success === true || 
+					                 (response?.success === undefined && response !== undefined);
+					
+					if (isSuccess) {
+						console.log('✅ 评论成功:', response?.data || response);
+						return response?.data || response;
+					} else {
+						// 如果响应明确表示失败，抛出错误
+						console.warn('⚠️ 评论响应表示失败:', response);
+						const error = new Error(response?.message || '评论失败');
+						error.response = response;
+						throw error;
 					}
 				} catch (error) {
-					uni.showToast({
-						title: '添加评论失败',
-						icon: 'error'
+					console.error('❌ 添加评论失败:', error);
+					console.error('❌ 错误详情:', {
+						statusCode: error.statusCode,
+						message: error.message,
+						response: error.response
 					});
+					
+					// 根据错误类型显示不同的提示
+					let errorMessage = '添加评论失败';
+					if (error.statusCode === 400) {
+						const serverMessage = error.response?.message || error.message || '参数错误';
+						errorMessage = `请求参数错误：${serverMessage}`;
+					} else if (error.statusCode === 403) {
+						errorMessage = '服务器拒绝请求（403）';
+					} else if (error.statusCode === 401) {
+						errorMessage = '未授权（401），请先登录';
+					} else if (error.statusCode === 404) {
+						errorMessage = '接口不存在（404）';
+					} else if (error.statusCode === 500) {
+						errorMessage = '服务器内部错误（500）';
+					} else if (error.message) {
+						errorMessage = error.message;
+					}
+					
+					uni.showToast({
+						title: errorMessage,
+						icon: 'error',
+						duration: 3000
+					});
+					
+					// 抛出错误，让调用方知道失败了
+					throw error;
 				}
 			},
 			
 			async likeContent(contentId, commentId = null) {
 				try {
+					console.log('📤 调用 like API:', { contentId, commentId });
 					const response = await apiService.like(contentId, commentId);
-					if (response.success) {
-						return response.data;
+					
+					// 详细记录响应信息
+					console.log('📥 点赞接口响应:', {
+						response: response,
+						responseType: typeof response,
+						hasSuccess: 'success' in (response || {}),
+						successValue: response?.success,
+						responseString: JSON.stringify(response, null, 2)
+					});
+					
+					// 判断请求是否成功：
+					// 1. 如果响应有 success 字段，检查其值
+					// 2. 如果没有 success 字段，但也没有抛出异常，说明接口调用成功（HTTP 200）
+					const isSuccess = response?.success === true || 
+					                 (response?.success === undefined && response !== undefined);
+					
+					if (isSuccess) {
+						console.log('✅ 点赞成功:', response?.data || response);
+						return response?.data || response;
+					} else {
+						// 如果响应明确表示失败，抛出错误
+						console.warn('⚠️ 点赞响应表示失败:', response);
+						const error = new Error(response?.message || '点赞失败');
+						error.response = response;
+						throw error;
 					}
 				} catch (error) {
-					uni.showToast({
-						title: '点赞失败',
-						icon: 'error'
+					console.error('❌ 点赞失败:', error);
+					console.error('❌ 错误详情:', {
+						statusCode: error.statusCode,
+						message: error.message,
+						response: error.response
 					});
+					
+					// 根据错误类型显示不同的提示
+					let errorMessage = '点赞失败';
+					if (error.statusCode === 400) {
+						const serverMessage = error.response?.message || error.message || '参数错误';
+						errorMessage = `请求参数错误：${serverMessage}`;
+					} else if (error.statusCode === 403) {
+						errorMessage = '服务器拒绝请求（403）';
+					} else if (error.statusCode === 401) {
+						errorMessage = '未授权（401），请先登录';
+					} else if (error.statusCode === 404) {
+						errorMessage = error.response?.message || '内容不存在（404）';
+					} else if (error.statusCode === 500) {
+						errorMessage = '服务器内部错误（500）';
+					} else if (error.message) {
+						errorMessage = error.message;
+					}
+					
+					uni.showToast({
+						title: errorMessage,
+						icon: 'error',
+						duration: 3000
+					});
+					
+					// 抛出错误，让调用方知道失败了
+					throw error;
 				}
 			},
 			
@@ -1859,36 +2051,54 @@
 					const rightVotes = this.initialVotesTotal - leftVotes;
 					
 					// 发送到数据库
+					// 服务器要求：leftVotes + rightVotes 必须等于 100
+					// 只需要发送一次请求，包含双方的票数
 					try {
-						// 先发送正方票
-						if (leftVotes > 0) {
-							await this.sendUserVote('left', leftVotes);
-						}
-						// 再发送反方票
-						if (rightVotes > 0) {
-							await this.sendUserVote('right', rightVotes);
-						}
-						
-						// 标记已提交
-						this.initialVotesSubmitted = true;
-						// 清除票数变化标记
-						this.votesChanged = false;
-						// 如果直播还没开始，隐藏预设观点面板，且不可再打开
-						// 如果直播已开始，面板可以继续显示（因为可能还需要拖动调整）
-						if (!this.isLiveStarted) {
-							this.showPresetSlider = false;
-							this.showPresetPanel = false;
+						// 确保总和为 100（初始票数应该已经是 100）
+						let finalLeftVotes = leftVotes;
+						let finalRightVotes = rightVotes;
+						const total = finalLeftVotes + finalRightVotes;
+						if (total !== 100) {
+							// 如果总和不是 100，按比例调整
+							const scale = 100 / total;
+							finalLeftVotes = Math.round(finalLeftVotes * scale);
+							finalRightVotes = 100 - finalLeftVotes; // 确保总和为 100
 						}
 						
-						// 更新本地显示的票数
-						this.leftVotes = leftVotes;
-						this.rightVotes = rightVotes;
+						// 发送一次请求，根据哪一方票数更多，决定以哪一方为主
+						let voteResult;
+						if (finalLeftVotes >= finalRightVotes) {
+							voteResult = await this.sendUserVote('left', finalLeftVotes);
+						} else {
+							voteResult = await this.sendUserVote('right', finalRightVotes);
+						}
 						
-						uni.showToast({
-							title: '✅ 初始投票已提交',
-							icon: 'success',
-							duration: 2000
-						});
+						// 检查投票结果
+						if (voteResult && voteResult.success !== false) {
+							// 标记已提交
+							this.initialVotesSubmitted = true;
+							// 清除票数变化标记
+							this.votesChanged = false;
+							// 如果直播还没开始，隐藏预设观点面板，且不可再打开
+							// 如果直播已开始，面板可以继续显示（因为可能还需要拖动调整）
+							if (!this.isLiveStarted) {
+								this.showPresetSlider = false;
+								this.showPresetPanel = false;
+							}
+							
+							// 更新本地显示的票数
+							this.leftVotes = finalLeftVotes;
+							this.rightVotes = finalRightVotes;
+							
+							uni.showToast({
+								title: '✅ 初始投票已提交',
+								icon: 'success',
+								duration: 2000
+							});
+						} else {
+							// 如果 sendUserVote 返回失败，错误提示已在 sendUserVote 中显示
+							console.warn('⚠️ 初始投票提交失败:', voteResult);
+						}
 					} catch (error) {
 						console.error('提交初始投票失败:', error);
 						uni.showToast({
@@ -1908,21 +2118,32 @@
 					}
 					
 					// 计算需要发送的票数变化
-					const leftVotes = this.leftVotes;
-					const rightVotes = this.rightVotes;
+					let leftVotes = this.leftVotes;
+					let rightVotes = this.rightVotes;
 					
-					// 这里需要发送增量的票数变化到数据库
-					// 简化处理：发送总票数（实际应该发送增量）
+					// 服务器要求：leftVotes + rightVotes 必须等于 100
+					// 只需要发送一次请求，包含双方的票数
 					try {
-						// 先发送正方票
-						if (leftVotes > 0) {
-							await this.sendUserVote('left', leftVotes);
-						}
-						// 再发送反方票  
-						if (rightVotes > 0) {
-							await this.sendUserVote('right', rightVotes);
+						// 确保总和为 100
+						const total = leftVotes + rightVotes;
+						if (total !== 100) {
+							// 如果总和不是 100，按比例调整
+							const scale = 100 / total;
+							leftVotes = Math.round(leftVotes * scale);
+							rightVotes = 100 - leftVotes; // 确保总和为 100
 						}
 						
+					// 发送一次请求，包含双方的票数（总和为100）
+					// 根据哪一方票数更多，决定以哪一方为主
+					let voteResult;
+					if (leftVotes >= rightVotes) {
+						voteResult = await this.sendUserVote('left', leftVotes);
+					} else {
+						voteResult = await this.sendUserVote('right', rightVotes);
+					}
+					
+					// 检查投票结果
+					if (voteResult && voteResult.success !== false) {
 						// 清除变化标记
 						this.presetSliderChanged = false;
 						this.votesChanged = false;
@@ -1932,6 +2153,10 @@
 							icon: 'success',
 							duration: 2000
 						});
+					} else {
+						// 如果 sendUserVote 返回失败，错误提示已在 sendUserVote 中显示
+						console.warn('⚠️ 投票提交失败:', voteResult);
+					}
 					} catch (error) {
 						console.error('提交投票失败:', error);
 						uni.showToast({
@@ -2017,9 +2242,84 @@
 				}, 600);
 			},
 			
-			// 手动开始直播
-			startLive() {
-				uni.showToast({ title: '请等待管理员开始直播', icon: 'none' });
+			// 手动开始直播（用户直接控制，不调用后端API）
+			async startLive() {
+				try {
+					// 如果已经开始了，直接返回
+					if (this.isLiveStarted) {
+						uni.showToast({ 
+							title: '直播已在进行中', 
+							icon: 'none',
+							duration: 2000
+						});
+						return;
+					}
+					
+					// 确保 apiService 已初始化（用于其他服务，如票数、AI内容）
+					if (!this.apiService) {
+						await this.initApiService();
+						if (!this.apiService) {
+							this.apiService = apiService;
+						}
+					}
+					
+					// 直接从配置文件或默认值获取直播流地址，不调用后端API
+					// 优先使用配置的直播流地址
+					const defaultStreamUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; // 默认测试流
+					
+					// 如果已有直播流地址，使用它；否则从配置获取或使用默认地址
+					if (!this.liveStreamUrl) {
+						// 使用导入的 liveConfig（已在文件顶部导入）
+						this.liveStreamUrl = liveConfig?.liveStreamUrl || defaultStreamUrl;
+					}
+					
+					// 直接开始直播，不调用后端API
+					this.isLiveStarted = true;
+					
+					console.log('✅ 直播已开始（前端直接启动）');
+					console.log('📺 直播流地址:', this.liveStreamUrl);
+					
+					uni.showToast({ 
+						title: '直播已开始', 
+						icon: 'success',
+						duration: 2000
+					});
+					
+					// 开始后，启动其他服务的实时更新（票数、AI内容）
+					// 这些服务会访问本地服务器
+					setTimeout(() => {
+						// 获取票数（访问本地服务器）
+						if (typeof this.fetchTopBarVotes === 'function') {
+							this.fetchTopBarVotes();
+							// 启动票数实时更新
+							if (typeof this.startTopBarRealTimeUpdate === 'function') {
+								this.startTopBarRealTimeUpdate();
+							}
+						}
+						
+						// 获取AI内容（访问本地服务器）
+						if (typeof this.fetchAIContent === 'function') {
+							this.fetchAIContent(true); // 初始加载
+							// 启动AI内容实时更新
+							if (typeof this.startAIContentRealTimeUpdate === 'function') {
+								this.startAIContentRealTimeUpdate();
+							}
+						}
+						
+						// 获取票数数据（如果方法存在）
+						if (typeof this.fetchVotes === 'function') {
+							this.fetchVotes();
+						}
+					}, 500);
+					
+				} catch (error) {
+					console.error('启动直播失败:', error);
+					uni.showToast({ 
+						title: '启动直播失败，请稍后重试', 
+						icon: 'none',
+						duration: 3000
+					});
+				}
 			},
 
 
@@ -2131,45 +2431,47 @@
 			
 			try {
 				// 发送到服务器
+				// 使用 serverId（服务器的 UUID），如果没有则使用本地 id
+				const contentId = this.currentCommentMessage.serverId || this.currentCommentMessage.id;
+				console.log('📤 提交评论:', {
+					contentId: contentId,
+					text: this.commentText.trim(),
+					localId: this.currentCommentMessage.id,
+					serverId: this.currentCommentMessage.serverId
+				});
+				
 				const serverComment = await this.addCommentToServer(
-					this.currentCommentMessage.id, 
-					'我', 
-					this.commentText.trim(), 
-					'👤'
+					contentId,
+					this.commentText.trim(), // text
+					'我', // user
+					'👤' // avatar
 				);
 				
-				if (serverComment) {
-					// 添加新评论到本地
-					const newComment = {
-						id: serverComment.id || Date.now(), // 使用服务器返回的 id 或生成临时 id
-						user: '我',
-						text: this.commentText.trim(),
-						time: '刚刚',
-						avatar: '👤',
-						likes: 0
-					};
-					this.currentCommentMessage.comments.unshift(newComment);
-					
-					// 关闭评论发表弹窗
-					this.closeCommentModal();
-					
-					// 重新打开评论详情弹窗，让用户看到刚刚发表的评论
-					if (this.currentCommentMessage) {
-						this.showMessageComments(this.currentCommentMessage);
-					}
-					
-					uni.showToast({
-						title: '评论发表成功！',
-						icon: 'success',
-						duration: 2000
-					});
-				} else {
-					uni.showToast({
-						title: '评论发表失败，请重试',
-						icon: 'error',
-						duration: 2000
-					});
+				// 如果 addCommentToServer 成功返回，说明评论已添加
+				// 添加新评论到本地
+				const newComment = {
+					id: serverComment?.id || Date.now(), // 使用服务器返回的 id 或生成临时 id
+					user: '我',
+					text: this.commentText.trim(),
+					time: '刚刚',
+					avatar: '👤',
+					likes: 0
+				};
+				this.currentCommentMessage.comments.unshift(newComment);
+				
+				// 关闭评论发表弹窗
+				this.closeCommentModal();
+				
+				// 重新打开评论详情弹窗，让用户看到刚刚发表的评论
+				if (this.currentCommentMessage) {
+					this.showMessageComments(this.currentCommentMessage);
 				}
+				
+				uni.showToast({
+					title: '评论发表成功！',
+					icon: 'success',
+					duration: 2000
+				});
 			} catch (error) {
 				// 提交评论失败
 				uni.showToast({
@@ -2237,11 +2539,33 @@
 			try {
 				// 如果评论有 id，发送到服务器
 				if (comment.id) {
-					const response = await apiService.deleteComment(message.id, comment.id);
+					// 使用 serverId（服务器的 UUID），如果没有则使用本地 id
+					const contentId = message.serverId || message.id;
+					console.log('📤 删除评论:', { contentId, commentId: comment.id });
+					const response = await apiService.deleteComment(contentId, comment.id);
 					
-					if (!response || !response.success) {
-						throw new Error('删除失败');
+					// 详细记录响应信息
+					console.log('📥 删除评论接口响应:', {
+						response: response,
+						responseType: typeof response,
+						hasSuccess: 'success' in (response || {}),
+						successValue: response?.success,
+						responseString: JSON.stringify(response, null, 2)
+					});
+					
+					// 判断请求是否成功：
+					// 1. 如果响应有 success 字段，检查其值
+					// 2. 如果没有 success 字段，但也没有抛出异常，说明接口调用成功（HTTP 200）
+					const isSuccess = response?.success === true || 
+					                 (response?.success === undefined && response !== undefined);
+					
+					if (!isSuccess) {
+						const errorMessage = response?.message || '删除失败';
+						console.warn('⚠️ 删除评论响应表示失败:', response);
+						throw new Error(errorMessage);
 					}
+					
+					console.log('✅ 删除评论成功:', response?.data || response);
 				}
 				
 				// 从本地删除评论
@@ -2282,8 +2606,16 @@
 						icon: 'none'
 					});
 				} else {
+					// 使用 serverId（服务器的 UUID），如果没有则使用本地 id
+					const contentId = message.serverId || message.id;
+					console.log('📝 点赞内容 ID:', { 
+						localId: message.id, 
+						serverId: message.serverId,
+						useId: contentId 
+					});
+					
 					// 发送到服务器
-					const result = await this.likeContent(message.id);
+					const result = await this.likeContent(contentId);
 					if (result) {
 						message.likes = result.likes;
 						message.isLiked = true;
