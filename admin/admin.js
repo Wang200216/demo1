@@ -713,19 +713,7 @@ function updateLiveControlButton(isLive) {
 
 // 控制直播状态 - 已移至admin-events.js中处理
 // 使用admin-api.js中的startLive和stopLive函数
-
-// 绑定直播控制按钮
-const controlLiveBtn = document.getElementById('control-live-btn');
-if (controlLiveBtn) {
-  controlLiveBtn.addEventListener('click', async () => {
-    if (controlLiveBtn.disabled) return;
-    controlLiveBtn.disabled = true;
-    const action = currentLiveStatus ? 'stop' : 'start';
-    await controlLive(action);
-    await loadLiveStatus(); // 保证操作后UI与服务端一致
-    setTimeout(() => { controlLiveBtn.disabled = false; }, 800); // 防止用户狂点
-  });
-}
+// 注意：直播控制按钮的事件监听器在 admin-events.js 的 initLiveControlEvents() 中绑定
 
 // ==================== 直播设置整合页 ====================
 async function loadLiveSetup() {

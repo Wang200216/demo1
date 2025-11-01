@@ -186,18 +186,7 @@ app.use('/admin', express.static(path.join(__dirname, 'admin')));
 // ==================== 后台管理 API（必须在代理之前） ====================
 const db = require('./admin/db.js');
 
-// 管理API - 数据概览
-app.get('/api/admin/dashboard', (req, res) => {
-	try {
-		const dashboard = db.statistics.getDashboard();
-		res.json(dashboard);
-	} catch (error) {
-		console.error('获取概览数据失败:', error);
-		res.status(500).json({ error: '获取数据失败' });
-	}
-});
-
-// 管理API - 直播流管理
+// 管理API - 直播流管理（数据概览接口在后面定义）
 app.get('/api/admin/streams', (req, res) => {
 	try {
 		const streams = db.streams.getAll();
@@ -1981,10 +1970,16 @@ app.post('/api/admin/live/stop', (req, res) => {
 	try {
 		const { saveStatistics = true, notifyUsers = true } = req.body;
 		
+		// 如果直播未开始，直接返回成功（幂等操作）
 		if (!globalLiveStatus.isLive) {
-			return res.status(400).json({
-				success: false,
-				message: '直播未开始'
+			return res.json({
+				success: true,
+				data: {
+					status: 'stopped',
+					message: '直播未开始，无需停止'
+				},
+				message: '直播未开始，无需停止',
+				timestamp: Date.now()
 			});
 		}
 		
