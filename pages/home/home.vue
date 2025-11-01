@@ -799,7 +799,7 @@
 					this.apiService = apiService;
 					
 					// 从配置文件获取当前服务器地址
-					const configUrl = API_BASE_URL || 'http://localhost:8000';
+					const configUrl = API_BASE_URL || 'http://localhost:8080';
 					
 					// 更新API服务配置为本地服务器
 					apiService.updateConfig(configUrl);

@@ -9,7 +9,7 @@ const serverCfg = require('./config/server-mode.node.js');
 const { getCurrentServerConfig, printConfig } = serverCfg;
 
 const currentConfig = getCurrentServerConfig();
-const port = currentConfig.mode === 'mock' ? currentConfig.port : 8000;
+const port = currentConfig.port; // 直接使用配置中的端口（mock和非mock模式都已配置为8080）
 
 // ==================== WebSocket 支持 ====================
 // 尝试加载 ws 模块（如果未安装需要运行: npm install ws）
@@ -930,6 +930,57 @@ app.get('/api/admin/ai-content', (req, res) => {
 		});
 	} catch (error) {
 		res.status(500).json({ error: '获取 AI 内容失败' });
+	}
+});
+
+// AI内容列表（必须在 /api/admin/ai-content/:id 之前定义，避免路由冲突）
+app.get('/api/admin/ai-content/list', (req, res) => {
+	try {
+		const page = parseInt(req.query.page) || 1;
+		const pageSize = parseInt(req.query.pageSize) || 20;
+		const startTime = req.query.startTime || null;
+		const endTime = req.query.endTime || null;
+		
+		// 从 aiDebateContent 数组中获取数据
+		let filteredContent = [...aiDebateContent];
+		
+		// 按时间过滤（如果有提供）
+		if (startTime) {
+			filteredContent = filteredContent.filter(item => 
+				new Date(item.timestamp || item.createdAt || 0) >= new Date(startTime)
+			);
+		}
+		if (endTime) {
+			filteredContent = filteredContent.filter(item => 
+				new Date(item.timestamp || item.createdAt || 0) <= new Date(endTime)
+			);
+		}
+		
+		// 计算总数
+		const total = filteredContent.length;
+		
+		// 分页
+		const start = (page - 1) * pageSize;
+		const end = start + pageSize;
+		const items = filteredContent.slice(start, end);
+		
+		res.json({
+			success: true,
+			data: {
+				total: total,
+				page: page,
+				pageSize: pageSize,
+				items: items
+			},
+			timestamp: Date.now()
+		});
+		
+	} catch (error) {
+		console.error('获取AI内容列表失败:', error);
+		res.status(500).json({
+			success: false,
+			message: '获取AI内容列表失败: ' + error.message
+		});
 	}
 });
 
@@ -2521,33 +2572,7 @@ app.get('/api/admin/votes/statistics', (req, res) => {
 	}
 });
 
-// 3.4 AI内容列表
-app.get('/api/admin/ai-content/list', (req, res) => {
-	try {
-		const page = parseInt(req.query.page) || 1;
-		const pageSize = parseInt(req.query.pageSize) || 20;
-		
-		// 这里应该从数据库获取AI内容
-		// 暂时返回空列表
-		res.json({
-			success: true,
-			data: {
-				total: 0,
-				page: page,
-				pageSize: pageSize,
-				items: []
-			},
-			timestamp: Date.now()
-		});
-		
-	} catch (error) {
-		console.error('获取AI内容列表失败:', error);
-		res.status(500).json({
-			success: false,
-			message: '获取AI内容列表失败: ' + error.message
-		});
-	}
-});
+// 3.4 AI内容列表（已在上面定义，此处删除重复定义）
 
 // ==================== 直播流管理接口 ====================
 

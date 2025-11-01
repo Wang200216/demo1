@@ -1,6 +1,6 @@
 // config/server-mode.node.js (Node.js后端专用)
 const USE_MOCK_SERVER = false; // 改为 false 使用真实服务器
-const LOCAL_SERVER_URL = 'http://localhost:8000';
+const LOCAL_SERVER_URL = 'http://localhost:8080';
 const REAL_SERVER_URL = 'http://192.168.31.189:8000';
 const REAL_SERVER_PORT = 8000;
 const REAL_WECHAT_CONFIG = {
@@ -10,8 +10,8 @@ const REAL_WECHAT_CONFIG = {
 const getLocalIP = () => '192.168.31.189';
 const MOCK_SERVER_CONFIG = {
     host: getLocalIP(),
-    port: 8000,
-    url: `http://${getLocalIP()}:8000`
+    port: 8080,
+    url: `http://${getLocalIP()}:8080`
 };
 const getCurrentServerConfig = () => {
     if (USE_MOCK_SERVER) {
@@ -27,10 +27,11 @@ const getCurrentServerConfig = () => {
             }
         };
     } else {
+        // 本地运行时使用8080端口，远程连接使用8000端口
         return {
             mode: 'real',
             url: REAL_SERVER_URL,
-            port: REAL_SERVER_PORT,
+            port: 8080,  // 本地运行端口改为8080
             wechat: {
                 useMock: false,
                 appid: REAL_WECHAT_CONFIG.appid,

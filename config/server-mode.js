@@ -21,7 +21,7 @@ const USE_MOCK_SERVER = false; // 使用真实服务器
  * 真实服务器地址
  * 当 USE_MOCK_SERVER = false 时使用
  */
-export const LOCAL_SERVER_URL = 'http://localhost:8000';
+export const LOCAL_SERVER_URL = 'http://localhost:8080';
 export const REAL_SERVER_URL = 'http://192.168.31.189:8000';
 
 /**
@@ -52,8 +52,8 @@ const getLocalIP = () => {
  */
 const MOCK_SERVER_CONFIG = {
     host: getLocalIP(),
-    port: 8000,
-    url: `http://${getLocalIP()}:8000`
+    port: 8080,
+    url: `http://${getLocalIP()}:8080`
 };
 
 /**
@@ -107,6 +107,6 @@ const printConfig = () => {
 // ==================== 导出配置 ====================
 
 // === 只改这一行即可一键切换全局API ===
-// export const API_BASE_URL = LOCAL_SERVER_URL; // 本地调试就用 LOCAL_SERVER_URL (http://localhost:8000)
+// export const API_BASE_URL = LOCAL_SERVER_URL; // 本地调试就用 LOCAL_SERVER_URL (http://localhost:8080)
 export const API_BASE_URL = REAL_SERVER_URL; // 上线或体验版就用 REAL_SERVER_URL (http://192.168.31.189:8000)
 

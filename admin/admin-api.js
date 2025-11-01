@@ -7,8 +7,8 @@ const getAPIBase = () => {
 	if (window.SERVER_CONFIG && window.SERVER_CONFIG.BASE_URL) {
 		return window.SERVER_CONFIG.BASE_URL;
 	}
-	// 默认使用本地服务器
-	return 'http://192.168.31.189:8000';
+	// 默认使用本地服务器（8080端口）
+	return 'http://localhost:8080';
 };
 
 // ==================== 通用请求函数 ====================
@@ -30,20 +30,43 @@ async function apiRequest(endpoint, options = {}) {
 		
 		const data = await response.json();
 		
+		console.log('📦 API 原始响应:', {
+			status: response.status,
+			statusText: response.statusText,
+			data: data
+		});
+		
 		if (!response.ok) {
-			throw new Error(data.message || `请求失败: ${response.status}`);
+			const errorMsg = data.message || data.error || `请求失败: ${response.status}`;
+			console.error(`❌ HTTP 错误 (${response.status}):`, errorMsg, data);
+			throw new Error(errorMsg);
 		}
 		
-		if (!data.success) {
+		// 检查是否有success字段，如果没有但数据存在，可能是旧格式
+		if (data.success === false) {
 			throw new Error(data.message || '请求失败');
 		}
 		
-		console.log('✅ API 响应:', data);
-		return data.data || data;
+		// 如果没有success字段但有数据，尝试兼容处理
+		if (data.success === undefined && data) {
+			console.warn('⚠️ API响应缺少success字段，尝试兼容处理:', data);
+			// 如果返回的是数组或对象（但不是错误对象），直接返回
+			if (Array.isArray(data) || (typeof data === 'object' && !data.error && !data.message)) {
+				return data;
+			}
+		}
+		
+		// 如果data.success为true，返回data.data，否则返回整个data
+		const result = data.success !== undefined ? (data.data || data) : data;
+		console.log('✅ API 响应成功:', result);
+		return result;
 		
 	} catch (error) {
 		console.error(`❌ API 错误 (${endpoint}):`, error);
-		alert(`操作失败: ${error.message}`);
+		// 只在非关键错误时显示alert，避免干扰用户体验
+		if (endpoint !== '/api/admin/dashboard') {
+			alert(`操作失败: ${error.message}`);
+		}
 		return null;
 	}
 }

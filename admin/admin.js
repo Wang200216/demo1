@@ -2,7 +2,7 @@
 // 服务器配置
 const SERVER_CONFIG = {
 	// 本地开发时使用
-	LOCAL_URL: 'http://localhost:8000',
+	LOCAL_URL: 'http://localhost:8080',
 	// 真实服务器地址（后端开发完成后使用）
 	REAL_URL: 'http://192.168.31.189:8000',
 	// 当前使用的地址（修改这里切换服务器）
