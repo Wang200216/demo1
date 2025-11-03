@@ -116,40 +116,102 @@ function updateVotesDisplay(data) {
 // ==================== AI控制事件 ====================
 
 function initAIEvents() {
-	// 启动AI识别
+	// 启动AI识别（改为通过直播接口启动）
 	const startAIBtn = document.getElementById('start-ai-btn');
 	if (startAIBtn) {
 		startAIBtn.addEventListener('click', async () => {
-			// 获取AI设置
-			const settings = {
-				mode: document.getElementById('ai-mode')?.value || 'realtime',
-				sensitivity: document.getElementById('ai-sensitivity')?.value || 'high',
-				interval: parseInt(document.getElementById('ai-interval')?.value) || 5000,
-				minConfidence: parseFloat(document.getElementById('ai-confidence')?.value) || 0.7
-			};
-			
-			if (!confirm('确定要启动AI识别吗？')) {
-				return;
-			}
-			
-			const result = await startAI(settings, true);
-			if (result) {
-				updateAIControlButtons('running');
+			// ⚠️ 重要修改：现在必须通过直播接口启动AI，不再使用单独的 /api/admin/ai/start 接口
+			try {
+				// 先检查当前直播状态
+				const dashboard = await fetchDashboard();
+				if (!dashboard) {
+					alert('获取直播状态失败，请刷新页面重试');
+					return;
+				}
+				
+				const isLive = dashboard.isLive || false;
+				const streamId = dashboard.streamId || null;
+				
+				if (!isLive) {
+					alert('⚠️ AI实时识别需要先开始直播！\n\n请先点击"开始直播"按钮，并勾选"自动启动AI识别"选项。');
+					return;
+				}
+				
+				// 如果直播已开始，需要重新启动直播来启用AI
+				if (!confirm('确定要启动AI识别吗？\n\n⚠️ 注意：这将重新启动直播以启用AI识别功能。')) {
+					return;
+				}
+				
+				// ⚠️ 重要：使用直播接口启动，并设置 autoStartAI: true
+				// 先停止当前直播（不通知用户，避免干扰）
+				await stopLive(true, false);
+				
+				// 立即重新启动直播并自动启动AI
+				console.log('🔄 重新启动直播以启用AI识别...');
+				const result = await startLive(streamId, true, true);
+				
+				if (result && result.success) {
+					console.log('✅ AI识别已通过直播接口启动');
+					console.log('📺 直播流地址:', result.streamUrl);
+					
+					updateAIControlButtons('running');
+					
+					// 启动成功后，延迟订阅AI内容更新（等待后端ASR服务就绪）
+					setTimeout(() => {
+						if (typeof loadAIContentList === 'function') {
+							console.log('📡 开始订阅AI内容更新...');
+							loadAIContentList(1);
+						}
+						
+						// 设置定时刷新AI内容列表
+						if (window.aiContentRefreshTimer) {
+							clearInterval(window.aiContentRefreshTimer);
+						}
+						window.aiContentRefreshTimer = setInterval(() => {
+							if (typeof loadAIContentList === 'function') {
+								loadAIContentList(1);
+							}
+						}, 5000); // 每5秒刷新一次
+					}, 2000); // 延迟2秒，等待后端ASR服务启动
+				} else {
+					console.error('❌ 启动AI识别失败:', result);
+					alert('启动AI识别失败，请查看控制台日志');
+				}
+			} catch (error) {
+				console.error('❌ 启动AI识别失败:', error);
+				alert('启动AI识别失败: ' + (error.message || '未知错误'));
 			}
 		});
 	}
 	
-	// 停止AI识别
+	// 停止AI识别（改为通过直播接口停止）
 	const stopAIBtn = document.getElementById('stop-ai-btn');
 	if (stopAIBtn) {
 		stopAIBtn.addEventListener('click', async () => {
-			if (!confirm('确定要停止AI识别吗？')) {
+			if (!confirm('确定要停止AI识别吗？\n（这将停止整个直播）')) {
 				return;
 			}
 			
-			const result = await stopAI(true, true);
-			if (result) {
-				updateAIControlButtons('stopped');
+			try {
+				// ⚠️ 重要修改：停止直播时会自动停止AI，无需单独调用 stopAI
+				const result = await stopLive(true, true);
+				
+				if (result && result.success) {
+					console.log('✅ AI识别已通过直播接口停止');
+					updateAIControlButtons('stopped');
+					
+					// 清理AI内容刷新定时器
+					if (window.aiContentRefreshTimer) {
+						clearInterval(window.aiContentRefreshTimer);
+						window.aiContentRefreshTimer = null;
+						console.log('🧹 已清理AI内容刷新定时器');
+					}
+				} else {
+					alert('停止AI识别失败，请查看控制台日志');
+				}
+			} catch (error) {
+				console.error('❌ 停止AI识别失败:', error);
+				alert('停止AI识别失败: ' + (error.message || '未知错误'));
 			}
 		});
 	}
@@ -348,13 +410,21 @@ function initLiveControlEvents() {
 						return;
 					}
 					const result = await stopLive(true, true);
-					if (result) {
+					if (result && result.success) {
 						controlLiveBtn.textContent = '开始直播';
 						controlLiveBtn.classList.remove('btn-danger');
 						controlLiveBtn.classList.add('btn-success');
 						if (window.globalState) {
 							window.globalState.isLive = false;
 						}
+						
+						// 清理AI内容刷新定时器
+						if (window.aiContentRefreshTimer) {
+							clearInterval(window.aiContentRefreshTimer);
+							window.aiContentRefreshTimer = null;
+							console.log('🧹 已清理AI内容刷新定时器');
+						}
+						
 						// 刷新 dashboard 以更新显示
 						if (typeof loadDashboard === 'function') {
 							loadDashboard();
@@ -366,19 +436,40 @@ function initLiveControlEvents() {
 					const streamId = null; // 使用默认直播流
 					const autoStartAI = confirm('是否同时启动AI识别？');
 					
-					const result = await startLive(streamId, autoStartAI, true);
-					if (result) {
-						controlLiveBtn.textContent = '停止直播';
-						controlLiveBtn.classList.remove('btn-success');
-						controlLiveBtn.classList.add('btn-danger');
-						if (window.globalState) {
-							window.globalState.isLive = true;
+			const result = await startLive(streamId, autoStartAI, true);
+			if (result && result.success) {
+				controlLiveBtn.textContent = '停止直播';
+				controlLiveBtn.classList.remove('btn-success');
+				controlLiveBtn.classList.add('btn-danger');
+				if (window.globalState) {
+					window.globalState.isLive = true;
+				}
+				
+				// 如果自动启动了AI，设置定时刷新AI内容
+				if (autoStartAI) {
+					setTimeout(() => {
+						if (typeof loadAIContentList === 'function') {
+							console.log('📡 AI已自动启动，开始订阅AI内容更新...');
+							loadAIContentList(1);
 						}
-						// 刷新 dashboard 以更新显示
-						if (typeof loadDashboard === 'function') {
-							loadDashboard();
+						
+						// 设置定时刷新AI内容列表
+						if (window.aiContentRefreshTimer) {
+							clearInterval(window.aiContentRefreshTimer);
 						}
-					}
+						window.aiContentRefreshTimer = setInterval(() => {
+							if (typeof loadAIContentList === 'function') {
+								loadAIContentList(1);
+							}
+						}, 5000); // 每5秒刷新一次
+					}, 2000); // 延迟2秒，等待后端ASR服务启动
+				}
+				
+				// 刷新 dashboard 以更新显示
+				if (typeof loadDashboard === 'function') {
+					loadDashboard();
+				}
+			}
 				}
 			} catch (error) {
 				console.error('获取直播状态失败:', error);
@@ -401,7 +492,7 @@ function initLiveControlEvents() {
 			}
 			
 			const result = await startLive(streamId, autoStartAI, true);
-			if (result) {
+			if (result && result.success) {
 				adminStartLiveBtn.disabled = true;
 				adminStopLiveBtn.disabled = false;
 				if (window.globalState) {
@@ -415,14 +506,35 @@ function initLiveControlEvents() {
 				}
 				
 				// 更新直播流信息
-				if (result.streamUrl) {
+				if (result.streamUrl || result.data?.streamUrl) {
+					const streamUrl = result.streamUrl || result.data?.streamUrl;
 					const streamInfoEl = document.getElementById('live-stream-info');
 					if (streamInfoEl) {
 						streamInfoEl.style.display = 'block';
-						document.getElementById('live-stream-id').textContent = result.liveId || '-';
-						document.getElementById('live-stream-url').textContent = result.streamUrl || '-';
-						document.getElementById('live-start-time').textContent = result.startTime || '-';
+						document.getElementById('live-stream-id').textContent = result.liveId || result.data?.liveId || '-';
+						document.getElementById('live-stream-url').textContent = streamUrl || '-';
+						document.getElementById('live-start-time').textContent = result.startTime || result.data?.startTime || '-';
 					}
+				}
+				
+				// 如果自动启动了AI，设置定时刷新AI内容
+				if (autoStartAI) {
+					setTimeout(() => {
+						if (typeof loadAIContentList === 'function') {
+							console.log('📡 AI已自动启动，开始订阅AI内容更新...');
+							loadAIContentList(1);
+						}
+						
+						// 设置定时刷新AI内容列表
+						if (window.aiContentRefreshTimer) {
+							clearInterval(window.aiContentRefreshTimer);
+						}
+						window.aiContentRefreshTimer = setInterval(() => {
+							if (typeof loadAIContentList === 'function') {
+								loadAIContentList(1);
+							}
+						}, 5000); // 每5秒刷新一次
+					}, 2000); // 延迟2秒，等待后端ASR服务启动
 				}
 			}
 		});
@@ -435,11 +547,18 @@ function initLiveControlEvents() {
 			}
 			
 			const result = await stopLive(true, true);
-			if (result) {
+			if (result && result.success) {
 				adminStartLiveBtn.disabled = false;
 				adminStopLiveBtn.disabled = true;
 				if (window.globalState) {
 					window.globalState.isLive = false;
+				}
+				
+				// 清理AI内容刷新定时器
+				if (window.aiContentRefreshTimer) {
+					clearInterval(window.aiContentRefreshTimer);
+					window.aiContentRefreshTimer = null;
+					console.log('🧹 已清理AI内容刷新定时器');
 				}
 				
 				// 更新显示

@@ -73,7 +73,7 @@
 				
 				<view class="live-video">
 					<!-- #ifdef MP-WEIXIN -->
-					<!-- 微信小程序直播播放器 -->
+					<!-- 微信小程序直播播放器 - HLS 优化版 -->
 					<live-player
 						v-if="isLiveStarted"
 						:src="liveStreamUrl"
@@ -82,10 +82,23 @@
 						autoplay
 						:muted="isMuted"
 						object-fit="contain"
+						:min-cache="hlsConfig.minCache"
+						:max-cache="hlsConfig.maxCache"
+						:background-mute="false"
+						:enable-auto-rotation="false"
+						:orientation="hlsConfig.orientation"
+						:picture-in-picture-mode="hlsConfig.pipMode"
+						:sound-mode="hlsConfig.soundMode"
 						@statechange="handleLiveStateChange"
 						@error="handleLiveError"
-						@netstatus="handleNetStatus">
+						@netstatus="handleNetStatus"
+						@fullscreenchange="handleFullScreenChange"
+						@audiovolumenotify="handleAudioVolumeNotify">
 					</live-player>
+					<!-- HLS 连接状态指示器 -->
+					<view class="hls-status-indicator" v-if="hlsStatus.show">
+						<text class="hls-status-text" :class="hlsStatus.type">{{ hlsStatus.message }}</text>
+					</view>
 					<!-- #endif -->
 					
 					<!-- #ifndef MP-WEIXIN -->
@@ -656,7 +669,61 @@
 				wsReconnectTimer: null, // WebSocket重连定时器
 				wsHeartbeatTimer: null, // WebSocket心跳定时器
 				wsReconnectAttempts: 0, // WebSocket重连次数
-				wsMaxReconnectAttempts: 5 // WebSocket最大重连次数
+				wsMaxReconnectAttempts: 5, // WebSocket最大重连次数
+				
+				// ==================== HLS 播放器配置 ====================
+				hlsConfig: {
+					// 缓冲区配置（单位：秒）
+					minCache: 1,      // 最小缓冲区，减少延迟
+					maxCache: 3,      // 最大缓冲区，保证流畅
+					// 画面方向 (vertical: 竖屏, horizontal: 横屏)
+					orientation: 'vertical',
+					// 画中画模式 ([] 表示禁用)
+					pipMode: [],
+					// 声音输出方式 (speaker: 扬声器, ear: 听筒)
+					soundMode: 'speaker'
+				},
+				
+				// HLS 播放状态
+				hlsStatus: {
+					show: false,           // 是否显示状态提示
+					message: '',           // 状态消息
+					type: 'info',         // 状态类型: info / success / warning / error
+					code: 0,              // 状态码
+					connectTime: 0        // 连接时间
+				},
+				
+				// HLS 网络质量监控
+				hlsNetQuality: {
+					videoBitrate: 0,      // 视频码率 (kbps)
+					audioBitrate: 0,      // 音频码率 (kbps)
+					videoFPS: 0,          // 视频帧率
+					videoGOP: 0,          // 视频GOP
+					netSpeed: 0,          // 网络速度 (kbps)
+					netJitter: 0,         // 网络抖动 (ms)
+					videoWidth: 0,        // 视频宽度
+					videoHeight: 0        // 视频高度
+				},
+				
+				// HLS 自动重连配置
+				hlsReconnect: {
+					enabled: true,        // 是否启用自动重连
+					attempts: 0,          // 当前重连次数
+					maxAttempts: 3,       // 最大重连次数
+					delay: 3000,          // 重连延迟 (ms)
+					timer: null,          // 重连定时器
+					exponentialBackoff: true  // 是否使用指数退避
+				},
+				
+				// HLS 质量统计
+				hlsStats: {
+					totalPlayTime: 0,     // 总播放时长 (秒)
+					bufferingCount: 0,    // 卡顿次数
+					bufferingTime: 0,     // 卡顿总时长 (秒)
+					errorCount: 0,        // 错误次数
+					lastErrorTime: 0,     // 最后错误时间
+					startTime: 0          // 开始播放时间
+				}
 			}
 		},
 		computed: {
@@ -869,47 +936,332 @@
 			return this.serverUrl || API_BASE_URL;
 		},
 
-			// 处理直播状态变化
-			handleLiveStateChange(e) {
-				const code = e.detail.code;
-				// 2001: 已经连接服务器
-				// 2002: 已经连接服务器,开始拉流
-				// 2003: 网络接收到首个视频数据包(IDR)
-				// 2004: 视频播放开始
-				// 2007: 视频播放Loading
-				// 2008: 解码器启动
-				// -2301: 网络断连,且经多次重连抢救无效,更多重试请自行重启播放
-				// -2302: 获取加速拉流地址失败
-				
-				if (code === 2004) {
+		// ==================== HLS 播放器事件处理（优化版） ====================
+		
+		// 处理直播状态变化
+		handleLiveStateChange(e) {
+			const code = e.detail.code;
+			const message = e.detail.message || '';
+			
+			console.log(`📺 [HLS状态] Code: ${code}, Message: ${message}`);
+			
+			// 微信小程序 live-player 状态码说明：
+			// 连接阶段
+			// 2001: 已经连接服务器
+			// 2002: 已经连接服务器,开始拉流
+			// 2003: 网络接收到首个视频数据包(IDR)
+			// 2004: 视频播放开始
+			// 2005: 视频播放进度
+			// 2006: 视频播放结束
+			// 2007: 视频播放Loading
+			// 2008: 解码器启动
+			// 2009: 视频编码器启动
+			
+			// 错误码
+			// -2301: 网络断连,且经多次重连抢救无效
+			// -2302: 获取加速拉流地址失败
+			// -2303: 播放地址无效
+			// -2304: 播放格式不支持
+			// -2305: 播放器内部错误
+			// -2306: 播放解码失败
+			
+			// 清除之前的重连定时器
+			if (this.hlsReconnect.timer) {
+				clearTimeout(this.hlsReconnect.timer);
+				this.hlsReconnect.timer = null;
+			}
+			
+			switch (code) {
+				case 2001:
+					this.liveStatus = 'connecting';
+					this.showHlsStatus('正在连接直播服务器...', 'info');
+					break;
+					
+				case 2002:
+					this.liveStatus = 'pulling';
+					this.showHlsStatus('开始拉取直播流...', 'info');
+					break;
+					
+				case 2003:
+					this.liveStatus = 'buffering';
+					this.showHlsStatus('接收视频数据中...', 'info');
+					this.hlsStats.startTime = Date.now();
+					break;
+					
+				case 2004:
 					this.liveStatus = 'playing';
-				} else if (code === 2007) {
+					this.showHlsStatus('直播连接成功 ✓', 'success', 2000);
+					// 重置重连计数
+					this.hlsReconnect.attempts = 0;
+					// 记录连接时间
+					const connectTime = Date.now() - (this.hlsStats.startTime || Date.now());
+					this.hlsStatus.connectTime = connectTime;
+					console.log(`✅ [HLS] 直播连接成功，耗时: ${connectTime}ms`);
+					break;
+					
+				case 2007:
 					this.liveStatus = 'loading';
-				} else if (code === -2301 || code === -2302) {
+					this.showHlsStatus('视频加载中...', 'warning');
+					this.hlsStats.bufferingCount++;
+					break;
+					
+				case 2008:
+					this.liveStatus = 'decoding';
+					console.log('🎬 [HLS] 解码器已启动');
+					break;
+					
+				case -2301:
+					// 网络断连
+					this.liveStatus = 'disconnected';
+					this.hlsStats.errorCount++;
+					console.error('❌ [HLS] 网络断连');
+					this.showHlsStatus('网络连接已断开', 'error', 3000);
+					this.tryHlsReconnect();
+					break;
+					
+				case -2302:
+					// 获取拉流地址失败
 					this.liveStatus = 'error';
-					uni.showToast({
-						title: '直播连接失败',
-						icon: 'none'
-					});
-				}
-			},
+					this.hlsStats.errorCount++;
+					console.error('❌ [HLS] 获取拉流地址失败');
+					this.showHlsStatus('无法获取直播地址', 'error', 3000);
+					this.tryHlsReconnect();
+					break;
+					
+				case -2303:
+					// 播放地址无效
+					this.liveStatus = 'error';
+					this.hlsStats.errorCount++;
+					console.error('❌ [HLS] 播放地址无效:', this.liveStreamUrl);
+					this.showHlsStatus('直播地址无效，请检查配置', 'error', 5000);
+					break;
+					
+				case -2304:
+					// 播放格式不支持
+					this.liveStatus = 'error';
+					this.hlsStats.errorCount++;
+					console.error('❌ [HLS] 播放格式不支持');
+					this.showHlsStatus('不支持此直播格式', 'error', 5000);
+					break;
+					
+				case -2305:
+					// 播放器内部错误
+					this.liveStatus = 'error';
+					this.hlsStats.errorCount++;
+					console.error('❌ [HLS] 播放器内部错误');
+					this.showHlsStatus('播放器出错', 'error', 3000);
+					this.tryHlsReconnect();
+					break;
+					
+				case -2306:
+					// 解码失败
+					this.liveStatus = 'error';
+					this.hlsStats.errorCount++;
+					console.error('❌ [HLS] 视频解码失败');
+					this.showHlsStatus('视频解码失败', 'error', 3000);
+					this.tryHlsReconnect();
+					break;
+					
+				default:
+					console.log(`📺 [HLS] 未处理的状态码: ${code}`);
+					this.hlsStatus.code = code;
+			}
+		},
 
-			// 处理直播错误
-			handleLiveError(e) {
-				uni.showToast({
-					title: '直播播放出错',
-					icon: 'none'
+		// 处理直播错误
+		handleLiveError(e) {
+			const errCode = e.detail.errCode;
+			const errMsg = e.detail.errMsg || '';
+			
+			console.error(`❌ [HLS错误] Code: ${errCode}, Message: ${errMsg}`);
+			
+			this.liveStatus = 'error';
+			this.hlsStats.errorCount++;
+			this.hlsStats.lastErrorTime = Date.now();
+			
+			// 显示错误提示
+			let errorMessage = '直播播放出错';
+			if (errMsg) {
+				errorMessage = errMsg;
+			}
+			
+			this.showHlsStatus(errorMessage, 'error', 3000);
+			
+			// 尝试自动重连
+			if (this.hlsReconnect.enabled) {
+				this.tryHlsReconnect();
+			}
+		},
+
+		// 处理网络状态（HLS 质量监控）
+		handleNetStatus(e) {
+			if (!e.detail || !e.detail.info) {
+				return;
+			}
+			
+			const info = e.detail.info;
+			
+			// 更新网络质量数据
+			this.hlsNetQuality = {
+				videoBitrate: info.videoBitrate || 0,      // 视频码率 (kbps)
+				audioBitrate: info.audioBitrate || 0,      // 音频码率 (kbps)
+				videoFPS: info.videoFPS || 0,              // 视频帧率
+				videoGOP: info.videoGOP || 0,              // 视频GOP
+				netSpeed: info.netSpeed || 0,              // 网络速度 (kbps)
+				netJitter: info.netJitter || 0,            // 网络抖动 (ms)
+				videoWidth: info.videoWidth || 0,          // 视频宽度
+				videoHeight: info.videoHeight || 0         // 视频高度
+			};
+			
+			// 更新播放时长
+			if (this.hlsStats.startTime > 0) {
+				this.hlsStats.totalPlayTime = Math.floor((Date.now() - this.hlsStats.startTime) / 1000);
+			}
+			
+			// 检测网络质量问题
+			this.checkNetworkQuality();
+			
+			// 每10秒打印一次质量日志（降低日志频率）
+			if (Date.now() % 10000 < 1000) {
+				console.log('📊 [HLS质量]', {
+					'视频码率': `${info.videoBitrate || 0} kbps`,
+					'音频码率': `${info.audioBitrate || 0} kbps`,
+					'帧率': `${info.videoFPS || 0} fps`,
+					'分辨率': `${info.videoWidth || 0}x${info.videoHeight || 0}`,
+					'网络速度': `${info.netSpeed || 0} kbps`
 				});
+			}
+		},
+		
+		// 处理全屏变化
+		handleFullScreenChange(e) {
+			const fullScreen = e.detail.fullScreen;
+			console.log(`📺 [HLS] 全屏状态: ${fullScreen ? '全屏' : '退出全屏'}`);
+		},
+		
+		// 处理音量通知
+		handleAudioVolumeNotify(e) {
+			// 音频音量通知（WebRTC 模式下有效）
+			console.log('🔊 [HLS] 音量:', e.detail);
+		},
+		
+		// ==================== HLS 辅助方法 ====================
+		
+		// 显示 HLS 状态提示
+		showHlsStatus(message, type = 'info', duration = 0) {
+			this.hlsStatus = {
+				show: true,
+				message: message,
+				type: type,
+				code: this.hlsStatus.code
+			};
+			
+			// 如果设置了duration，自动隐藏
+			if (duration > 0) {
+				setTimeout(() => {
+					this.hlsStatus.show = false;
+				}, duration);
+			}
+		},
+		
+		// 隐藏 HLS 状态提示
+		hideHlsStatus() {
+			this.hlsStatus.show = false;
+		},
+		
+		// HLS 自动重连
+		tryHlsReconnect() {
+			if (!this.hlsReconnect.enabled) {
+				console.log('⚠️ [HLS] 自动重连已禁用');
+				return;
+			}
+			
+			if (this.hlsReconnect.attempts >= this.hlsReconnect.maxAttempts) {
+				console.error('❌ [HLS] 重连次数已达上限，停止重连');
+				this.showHlsStatus(`重连失败，已尝试${this.hlsReconnect.maxAttempts}次`, 'error', 5000);
+				return;
+			}
+			
+			// 清除之前的重连定时器
+			if (this.hlsReconnect.timer) {
+				clearTimeout(this.hlsReconnect.timer);
+			}
+			
+			// 计算重连延迟（指数退避）
+			let delay = this.hlsReconnect.delay;
+			if (this.hlsReconnect.exponentialBackoff) {
+				delay = this.hlsReconnect.delay * Math.pow(2, this.hlsReconnect.attempts);
+			}
+			
+			this.hlsReconnect.attempts++;
+			
+			console.log(`🔄 [HLS] 准备重连... (第${this.hlsReconnect.attempts}次，延迟${delay}ms)`);
+			this.showHlsStatus(`正在重连... (${this.hlsReconnect.attempts}/${this.hlsReconnect.maxAttempts})`, 'warning');
+			
+			// 延迟后重连
+			this.hlsReconnect.timer = setTimeout(() => {
+				console.log(`🔄 [HLS] 开始重连 (第${this.hlsReconnect.attempts}次)`);
+				
+				// 重新加载直播流（通过切换 isLiveStarted 触发重载）
+				this.isLiveStarted = false;
+				this.$nextTick(() => {
+					this.isLiveStarted = true;
+					this.showHlsStatus('重新连接中...', 'info');
+				});
+			}, delay);
+		},
+		
+		// 检测网络质量
+		checkNetworkQuality() {
+			const quality = this.hlsNetQuality;
+			
+			// 检测码率异常（太低）
+			if (quality.videoBitrate > 0 && quality.videoBitrate < 100) {
+				console.warn('⚠️ [HLS] 视频码率过低:', quality.videoBitrate, 'kbps');
+			}
+			
+			// 检测帧率异常（太低）
+			if (quality.videoFPS > 0 && quality.videoFPS < 15) {
+				console.warn('⚠️ [HLS] 视频帧率过低:', quality.videoFPS, 'fps');
+			}
+			
+			// 检测网络抖动
+			if (quality.netJitter > 200) {
+				console.warn('⚠️ [HLS] 网络抖动较大:', quality.netJitter, 'ms');
+			}
+		},
+		
+		// 重置 HLS 统计数据
+		resetHlsStats() {
+			this.hlsStats = {
+				totalPlayTime: 0,
+				bufferingCount: 0,
+				bufferingTime: 0,
+				errorCount: 0,
+				lastErrorTime: 0,
+				startTime: 0
+			};
+			this.hlsReconnect.attempts = 0;
+			console.log('🔄 [HLS] 统计数据已重置');
+		},
+		
+		// 获取 HLS 播放质量报告
+		getHlsQualityReport() {
+			return {
+				status: this.liveStatus,
+				playTime: this.hlsStats.totalPlayTime,
+				bufferingCount: this.hlsStats.bufferingCount,
+				errorCount: this.hlsStats.errorCount,
+				reconnectAttempts: this.hlsReconnect.attempts,
+			currentQuality: {
+				videoBitrate: this.hlsNetQuality.videoBitrate,
+				audioBitrate: this.hlsNetQuality.audioBitrate,
+				videoFPS: this.hlsNetQuality.videoFPS,
+				resolution: `${this.hlsNetQuality.videoWidth}x${this.hlsNetQuality.videoHeight}`
 			},
-
-			// 处理网络状态
-			handleNetStatus(e) {
-				// e.detail.info 包含网络状态信息
-				// videoBitrate: 当前视频编码器输出的比特率，单位 kbps
-				// audioBitrate: 当前音频编码器输出的比特率，单位 kbps
-				// videoFPS: 当前视频帧率
-				// videoGOP: 当前视频 GOP,也就是每两个关键帧(I帧)间隔时长
-			},
+				connectTime: this.hlsStatus.connectTime
+			};
+		},
 
 			// API调用方法
 			async fetchDebateTopic() {
@@ -2254,85 +2606,133 @@
 				}, 600);
 			},
 			
-			// 手动开始直播（用户直接控制，不调用后端API）
-			async startLive() {
-				try {
-					// 如果已经开始了，直接返回
-					if (this.isLiveStarted) {
-						uni.showToast({ 
-							title: '直播已在进行中', 
-							icon: 'none',
-							duration: 2000
-						});
-						return;
-					}
-					
-					// 确保 apiService 已初始化（用于其他服务，如票数、AI内容）
-					if (!this.apiService) {
-						await this.initApiService();
-						if (!this.apiService) {
-							this.apiService = apiService;
-						}
-					}
-					
-					// 直接从配置文件或默认值获取直播流地址，不调用后端API
-					// 优先使用配置的直播流地址
-					const defaultStreamUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'; // 默认测试流
-					
-					// 如果已有直播流地址，使用它；否则从配置获取或使用默认地址
-					if (!this.liveStreamUrl) {
-						// 使用导入的 liveConfig（已在文件顶部导入）
-						this.liveStreamUrl = liveConfig?.liveStreamUrl || defaultStreamUrl;
-					}
-					
-					// 直接开始直播，不调用后端API
-					this.isLiveStarted = true;
-					
-					console.log('✅ 直播已开始（前端直接启动）');
-					console.log('📺 直播流地址:', this.liveStreamUrl);
-					
+		// 手动开始直播（优先从服务器获取直播流地址）
+		async startLive() {
+			try {
+				// 如果已经开始了，直接返回
+				if (this.isLiveStarted) {
 					uni.showToast({ 
-						title: '直播已开始', 
-						icon: 'success',
+						title: '直播已在进行中', 
+						icon: 'none',
 						duration: 2000
 					});
-					
-					// 开始后，启动其他服务的实时更新（票数、AI内容）
-					// 这些服务会访问本地服务器
-					setTimeout(() => {
-						// 获取票数（访问本地服务器）
-						if (typeof this.fetchTopBarVotes === 'function') {
-							this.fetchTopBarVotes();
-							// 启动票数实时更新
-							if (typeof this.startTopBarRealTimeUpdate === 'function') {
-								this.startTopBarRealTimeUpdate();
-							}
-						}
-						
-						// 获取AI内容（访问本地服务器）
-						if (typeof this.fetchAIContent === 'function') {
-							this.fetchAIContent(true); // 初始加载
-							// 启动AI内容实时更新
-							if (typeof this.startAIContentRealTimeUpdate === 'function') {
-								this.startAIContentRealTimeUpdate();
-							}
-						}
-						
-						// 获取票数数据（如果方法存在）
-						if (typeof this.fetchVotes === 'function') {
-							this.fetchVotes();
-						}
-					}, 500);
-					
-				} catch (error) {
-					console.error('启动直播失败:', error);
-					uni.showToast({ 
-						title: '启动直播失败，请稍后重试', 
-						icon: 'none',
-						duration: 3000
-					});
+					return;
 				}
-			},
+				
+				// 确保 apiService 已初始化
+				if (!this.apiService) {
+					await this.initApiService();
+					if (!this.apiService) {
+						this.apiService = apiService;
+					}
+				}
+				
+				console.log('🎬 开始获取直播流地址...');
+				
+				// ==================== 第一步：从服务器获取直播状态和流地址 ====================
+				let serverStreamUrl = null;
+				let isServerLive = false;
+				
+				try {
+					const service = this.apiService || apiService;
+					
+					// 尝试获取服务器端的直播状态
+					const statusResponse = await service.getLiveStatus();
+					
+					console.log('📡 服务器直播状态:', statusResponse);
+					
+					if (statusResponse && statusResponse.isLive) {
+						// 服务器端直播正在进行
+						isServerLive = true;
+						
+						if (statusResponse.streamUrl) {
+							serverStreamUrl = statusResponse.streamUrl;
+							console.log('✅ 从服务器获取到直播流地址:', serverStreamUrl);
+						}
+					} else if (statusResponse && statusResponse.streamUrl && !statusResponse.isLive) {
+						// 服务器有流地址但未开始，也可以使用（用于测试）
+						serverStreamUrl = statusResponse.streamUrl;
+						console.log('⚠️ 服务器有流地址但未开始直播，使用该地址');
+					}
+				} catch (error) {
+					console.warn('⚠️ 获取服务器直播状态失败，使用备用地址:', error.message);
+					// 如果获取失败，继续使用备用地址
+				}
+				
+				// ==================== 第二步：确定使用的直播流地址 ====================
+				let finalStreamUrl = null;
+				
+				// 优先级：服务器流地址 > 已有流地址 > 配置文件的地址 > 默认测试流
+				if (serverStreamUrl) {
+					finalStreamUrl = serverStreamUrl;
+					console.log('✅ 使用服务器返回的直播流地址');
+				} else if (this.liveStreamUrl) {
+					finalStreamUrl = this.liveStreamUrl;
+					console.log('✅ 使用已有的直播流地址');
+				} else {
+					// 从配置文件获取
+					const configStreamUrl = liveConfig?.liveStreamUrl;
+					if (configStreamUrl) {
+						finalStreamUrl = configStreamUrl;
+						console.log('✅ 使用配置文件中的直播流地址');
+					} else {
+						// 最后使用默认测试流
+						finalStreamUrl = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8';
+						console.log('⚠️ 使用默认测试流地址');
+					}
+				}
+				
+				// 设置直播流地址
+				this.liveStreamUrl = finalStreamUrl;
+				
+				// 开始播放
+				this.isLiveStarted = true;
+				
+				console.log('✅ 直播已开始');
+				console.log('📺 使用的直播流地址:', this.liveStreamUrl);
+				console.log('🌐 服务器端直播状态:', isServerLive ? '进行中' : '未开始');
+				
+				uni.showToast({ 
+					title: isServerLive ? '已连接到服务器直播' : '开始播放直播流', 
+					icon: 'success',
+					duration: 2000
+				});
+				
+				// 开始后，启动其他服务的实时更新（票数、AI内容）
+				setTimeout(() => {
+					// 获取票数（访问本地服务器）
+					if (typeof this.fetchTopBarVotes === 'function') {
+						this.fetchTopBarVotes();
+						// 启动票数实时更新
+						if (typeof this.startTopBarRealTimeUpdate === 'function') {
+							this.startTopBarRealTimeUpdate();
+						}
+					}
+					
+					// 获取AI内容（访问本地服务器）
+					if (typeof this.fetchAIContent === 'function') {
+						this.fetchAIContent(true); // 初始加载
+						// 启动AI内容实时更新
+						if (typeof this.startAIContentRealTimeUpdate === 'function') {
+							this.startAIContentRealTimeUpdate();
+						}
+					}
+					
+					// 获取票数数据（如果方法存在）
+					if (typeof this.fetchVotes === 'function') {
+						this.fetchVotes();
+					}
+				}, 500);
+				
+			} catch (error) {
+				console.error('❌ 启动直播失败:', error);
+				uni.showToast({ 
+					title: '启动直播失败: ' + (error.message || '请稍后重试'), 
+					icon: 'none',
+					duration: 3000
+				});
+			}
+		},
 
 
 
@@ -2733,8 +3133,22 @@
 				
 				switch (data.type) {
 					case 'liveStatus':
-						// 更新直播状态
-						this.handleLiveStatusUpdate(data.data);
+					case 'live-status-changed':
+						// 更新直播状态（兼容两种消息类型）
+						// live-status-changed 的数据结构可能不同，需要适配
+						let liveData = data.data;
+						
+						// 适配 live-status-changed 的消息格式
+						if (data.type === 'live-status-changed') {
+							liveData = {
+								isLive: data.data.status === 'started',
+								streamUrl: data.data.streamUrl,
+								liveId: data.data.liveId,
+								startTime: data.data.startTime
+							};
+						}
+						
+						this.handleLiveStatusUpdate(liveData);
 						break;
 						
 					case 'aiStatus':
@@ -2767,34 +3181,63 @@
 				}
 			},
 			
-			// 处理直播状态更新
-			handleLiveStatusUpdate(data) {
-				console.log('🎬 直播状态更新:', data);
+		// 处理直播状态更新（WebSocket推送）
+		handleLiveStatusUpdate(data) {
+			console.log('🎬 直播状态更新（WebSocket）:', data);
+			
+			// ✅ 优先接收并设置直播流URL
+			if (data.streamUrl) {
+				this.liveStreamUrl = data.streamUrl;
+				console.log('📺 更新直播流地址:', data.streamUrl);
+			}
+			
+			// 更新直播状态
+			if (data.isLive !== undefined) {
+				const wasLive = this.isLiveStarted;
+				this.isLiveStarted = data.isLive;
 				
-				// 更新直播状态
-				if (data.isLive !== undefined) {
-					this.isLiveStarted = data.isLive;
-				}
-				
-				// ✅ 接收并设置直播流URL
-				if (data.streamUrl) {
-					this.liveStreamUrl = data.streamUrl;
-					console.log('📺 更新直播流地址:', data.streamUrl);
+				if (data.isLive && !wasLive) {
+					// 直播从停止变为开始
+					console.log('✅ 服务器开始直播，自动开始播放');
+					
+					// 如果有流地址，自动开始播放
+					if (this.liveStreamUrl) {
+						// 确保播放器开始播放
+						this.$nextTick(() => {
+							// 再次确认状态（因为可能在上面的代码中已经设置）
+							if (this.isLiveStarted) {
+								uni.showToast({
+									title: '直播已开始',
+									icon: 'success',
+									duration: 2000
+								});
+							}
+						});
+					} else {
+						// 没有流地址，提示用户
+						console.warn('⚠️ 收到直播开始信号，但缺少流地址');
+						uni.showToast({
+							title: '收到直播开始信号，但缺少流地址',
+							icon: 'none',
+							duration: 3000
+						});
+					}
+				} else if (!data.isLive && wasLive) {
+					// 直播从开始变为停止
+					console.log('🛑 服务器停止直播');
+					this.isLiveStarted = false;
 					
 					// 显示提示
 					uni.showToast({
-						title: '直播流已更新',
-						icon: 'success',
+						title: '直播已结束',
+						icon: 'none',
 						duration: 2000
 					});
-				}
-				
-				// 如果直播停止，可以清理状态
-				if (data.isLive === false) {
-					console.log('🛑 直播已停止');
+					
 					// 保留liveStreamUrl，下次可以继续使用
 				}
-			},
+			}
+		},
 			
 			// 处理AI状态更新
 			handleAIStatusUpdate(data) {
@@ -3259,6 +3702,59 @@
 		padding: 10rpx 20rpx;
 		border-radius: 20rpx;
 		backdrop-filter: blur(10rpx);
+	}
+	
+	/* ==================== HLS 状态指示器样式 ==================== */
+	.hls-status-indicator {
+		position: absolute;
+		bottom: 100rpx;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 100;
+		animation: hlsStatusSlideIn 0.3s ease-out;
+	}
+	
+	@keyframes hlsStatusSlideIn {
+		from {
+			opacity: 0;
+			transform: translateX(-50%) translateY(20rpx);
+		}
+		to {
+			opacity: 1;
+			transform: translateX(-50%) translateY(0);
+		}
+	}
+	
+	.hls-status-text {
+		padding: 16rpx 32rpx;
+		border-radius: 40rpx;
+		font-size: 28rpx;
+		color: #fff;
+		backdrop-filter: blur(20rpx);
+		box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.3);
+		white-space: nowrap;
+		font-weight: 500;
+		letter-spacing: 1rpx;
+	}
+	
+	.hls-status-text.info {
+		background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9));
+		border: 2rpx solid rgba(147, 197, 253, 0.5);
+	}
+	
+	.hls-status-text.success {
+		background: linear-gradient(135deg, rgba(34, 197, 94, 0.9), rgba(22, 163, 74, 0.9));
+		border: 2rpx solid rgba(134, 239, 172, 0.5);
+	}
+	
+	.hls-status-text.warning {
+		background: linear-gradient(135deg, rgba(251, 191, 36, 0.9), rgba(245, 158, 11, 0.9));
+		border: 2rpx solid rgba(253, 224, 71, 0.5);
+	}
+	
+	.hls-status-text.error {
+		background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+		border: 2rpx solid rgba(252, 165, 165, 0.5);
 	}
 
 	.live-ended-overlay {
