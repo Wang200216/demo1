@@ -477,7 +477,7 @@
 				console.log('UserInfo:', loginData.userInfo?.nickName)
 				
 			// 使用配置的API地址（强制使用本地服务器）
-			const apiBaseURL = API_BASE_URL || 'http://localhost:8000';
+			const apiBaseURL = API_BASE_URL || 'http://192.168.31.249:8081';
 			
 			// 调试日志：显示使用的服务器地址
 			console.log('📡 API_BASE_URL 值:', API_BASE_URL);
@@ -491,7 +491,7 @@
 					header: {
 						'Content-Type': 'application/json'
 					},
-					timeout: 10000
+					timeout: 30000 // 增加超时时间到 30 秒，因为需要代理到后端服务器
 				})
 				
 				console.log('服务器响应状态:', response.statusCode)

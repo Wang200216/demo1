@@ -199,23 +199,22 @@ app.use('/admin', express.static(path.join(__dirname, 'admin')));
 // 如果 PRIORITIZE_BACKEND_SERVER 为 true，所有 API 请求优先代理到后端服务器
 if (PRIORITIZE_BACKEND_SERVER && BACKEND_SERVER_URL) {
 	console.log('🔗 启用后端服务器优先模式：所有 API 请求将优先代理到后端服务器');
+	console.log(`🔗 后端服务器地址: ${BACKEND_SERVER_URL}`);
 	
-	// 配置代理中间件
-	const proxyOptions = {
+	// 创建代理中间件 - v3.x 使用 pathFilter 参数
+	const backendProxy = createProxyMiddleware({
 		target: BACKEND_SERVER_URL,
 		changeOrigin: true,
-		pathRewrite: {
-			// 保持原始路径不变
-		},
+		pathFilter: '/api', // 只代理 /api 路径
+		logger: console,
 		onProxyReq: (proxyReq, req, res) => {
-			console.log(`🔄 [优先代理] ${req.method} ${req.path} -> ${BACKEND_SERVER_URL}${req.path}`);
+			console.log(`🔄 [代理] ${req.method} ${req.path} -> ${BACKEND_SERVER_URL}${req.path}`);
 		},
 		onProxyRes: (proxyRes, req, res) => {
-			console.log(`✅ [优先代理] ${req.path} <- ${proxyRes.statusCode} ${BACKEND_SERVER_URL}`);
+			console.log(`✅ [代理] ${req.path} <- ${proxyRes.statusCode} ${BACKEND_SERVER_URL}`);
 		},
 		onError: (err, req, res) => {
-			console.error(`❌ [优先代理错误] ${req.path}:`, err.message);
-			// 代理失败时，返回 502 错误，不继续到本地路由
+			console.error(`❌ [代理错误] ${req.path}:`, err.message);
 			if (!res.headersSent) {
 				res.status(502).json({
 					success: false,
@@ -226,20 +225,12 @@ if (PRIORITIZE_BACKEND_SERVER && BACKEND_SERVER_URL) {
 				});
 			}
 		}
-	};
-	
-	// 创建代理中间件，使用 filter 函数精确控制哪些请求需要代理
-	const backendProxy = createProxyMiddleware({
-		filter: (pathname, req) => {
-			// 代理所有 /api/* 请求到后端服务器
-			return pathname.startsWith('/api');
-		},
-		...proxyOptions
 	});
 	
 	// 在所有本地路由之前，添加代理中间件
 	// 这样所有 API 请求会先尝试代理到后端服务器
 	app.use(backendProxy);
+	console.log('✅ 代理中间件已成功配置');
 }
 
 // ==================== 后台管理 API（仅在非优先后端模式时使用） ====================
