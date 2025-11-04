@@ -962,7 +962,7 @@
 					this.apiService = apiService;
 					
 					// 从配置文件获取当前服务器地址
-					const configUrl = API_BASE_URL || 'http://localhost:8080';
+					const configUrl = API_BASE_URL || 'http://192.168.31.249:8081';
 					
 					// 更新API服务配置为本地服务器
 					apiService.updateConfig(configUrl);
@@ -3632,13 +3632,13 @@
 			
 			// 建立WebSocket连接
 			connectWebSocket() {
-				try {
-					// 获取服务器地址
-					const serverUrl = this.getServerUrl() || API_BASE_URL;
-					// 将 http/https 替换为 ws/wss
-					const wsUrl = serverUrl.replace(/^http/, 'ws');
-					
-					console.log('🔌 正在连接WebSocket:', wsUrl);
+			try {
+				// 获取服务器地址
+				const serverUrl = this.getServerUrl() || API_BASE_URL;
+				// 将 http/https 替换为 ws/wss，并添加 /ws 路径
+				const wsUrl = serverUrl.replace(/^http/, 'ws') + '/ws';
+				
+				console.log('🔌 正在连接WebSocket:', wsUrl);
 					
 					// 创建WebSocket连接
 					this.socketTask = uni.connectSocket({

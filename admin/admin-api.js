@@ -7,8 +7,8 @@ const getAPIBase = () => {
 	if (window.SERVER_CONFIG && window.SERVER_CONFIG.BASE_URL) {
 		return window.SERVER_CONFIG.BASE_URL;
 	}
-	// 默认使用真实服务器（如果admin.js未加载，使用真实服务器地址）
-	return 'http://192.168.31.189:8000';
+	// 默认使用真实服务器（如果admin.js未加载，使用中间层网关地址）
+	return 'http://192.168.31.249:8081';
 };
 
 // ==================== 通用请求函数 ====================
@@ -42,13 +42,33 @@ async function apiRequest(endpoint, options = {}) {
 	
 	try {
 		console.log(`📡 API 请求: ${options.method || 'GET'} ${endpoint}`, options.body ? JSON.parse(options.body) : '');
+		console.log(`📡 完整URL: ${url}`);
 		
 		const response = await fetch(url, {
 			...options,
-			headers
+			headers,
+			mode: 'cors', // 明确指定 CORS 模式
+			credentials: 'omit' // 不发送 credentials，避免 CORS 问题
 		});
 		
-		const data = await response.json();
+		// 检查响应类型
+		const contentType = response.headers.get('content-type');
+		let data;
+		
+		if (contentType && contentType.includes('application/json')) {
+			data = await response.json();
+		} else {
+			// 如果不是 JSON，可能是 HTML 错误页面（如 nginx 404）
+			const text = await response.text();
+			console.error('❌ 收到非 JSON 响应:', text.substring(0, 200));
+			console.error('❌ 响应状态:', response.status, response.statusText);
+			console.error('❌ 响应头:', Object.fromEntries(response.headers.entries()));
+			
+			if (text.includes('nginx') || response.headers.get('server') === 'nginx/1.29.3') {
+				throw new Error('请求被 nginx 拦截，请确保 nginx 已停止。执行: sudo nginx -s stop 或 killall -9 nginx');
+			}
+			throw new Error(`服务器返回非 JSON 响应: ${response.status} ${response.statusText}`);
+		}
 		
 		console.log('📦 API 原始响应:', {
 			status: response.status,
@@ -83,6 +103,19 @@ async function apiRequest(endpoint, options = {}) {
 		
 	} catch (error) {
 		console.error(`❌ API 错误 (${endpoint}):`, error);
+		
+		// 详细的错误信息
+		if (error.name === 'TypeError' && error.message.includes('fetch')) {
+			console.error('❌ 网络错误: 无法连接到服务器，请检查：');
+			console.error('   1. 服务器是否已启动');
+			console.error('   2. 服务器地址是否正确:', getAPIBase());
+			console.error('   3. 是否有防火墙阻止');
+			console.error('   4. nginx 是否在拦截请求');
+		} else if (error.message.includes('nginx')) {
+			console.error('❌ nginx 拦截错误: 请停止 nginx 服务');
+			console.error('   执行命令: sudo nginx -s stop 或 killall nginx');
+		}
+		
 		return null;
 	}
 }

@@ -1,8 +1,12 @@
 // config/server-mode.node.js (Node.js后端专用)
 const USE_MOCK_SERVER = false; // 改为 false 使用真实服务器
 const LOCAL_SERVER_URL = 'http://localhost:8080';
-const REAL_SERVER_URL = 'http://192.168.31.189:8000';
-const REAL_SERVER_PORT = 8000;
+const REAL_SERVER_URL = 'http://192.168.31.249:8081'; // 中间层服务器地址（直接连接，不使用 nginx）
+const REAL_SERVER_PORT = 8081; // 中间层服务器端口（避免与 nginx 冲突）
+// 后端服务器配置（真正的后端服务器地址）
+const BACKEND_SERVER_URL = 'http://192.168.31.189:8000'; // 后端服务器地址
+// 是否优先使用后端服务器（设为 true 时，所有 API 请求会优先代理到后端服务器）
+const PRIORITIZE_BACKEND_SERVER = true; // 设为 true 优先使用后端服务器，false 优先使用本地路由
 const REAL_WECHAT_CONFIG = {
     appid: 'wx94289b0d2ca7a802',
     secret: '10409c1193a326a7b328f675b1776195'
@@ -27,11 +31,11 @@ const getCurrentServerConfig = () => {
             }
         };
     } else {
-        // 使用真实服务器，统一使用8000端口
+        // 使用真实服务器，直接连接中间层（不使用 nginx）
         return {
             mode: 'real',
             url: REAL_SERVER_URL,
-            port: 8000,  // 使用8000端口与前端请求保持一致
+            port: REAL_SERVER_PORT,  // 使用8080端口，与前端配置保持一致
             wechat: {
                 useMock: false,
                 appid: REAL_WECHAT_CONFIG.appid,
@@ -59,12 +63,14 @@ const printConfig = () => {
     console.log('═══════════════════════════════════════');
 };
 module.exports = {
-    USE_MOCK_SERVER,
-    MOCK_SERVER_CONFIG,
-    REAL_SERVER_URL,
-    REAL_SERVER_PORT,
-    REAL_WECHAT_CONFIG,
-    getCurrentServerConfig,
-    printConfig,
-    LOCAL_SERVER_URL,
+	USE_MOCK_SERVER,
+	MOCK_SERVER_CONFIG,
+	REAL_SERVER_URL,
+	REAL_SERVER_PORT,
+	REAL_WECHAT_CONFIG,
+	BACKEND_SERVER_URL,
+	PRIORITIZE_BACKEND_SERVER,
+	getCurrentServerConfig,
+	printConfig,
+	LOCAL_SERVER_URL,
 };

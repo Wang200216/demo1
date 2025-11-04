@@ -634,10 +634,11 @@ class ApiService {
    * @returns {string} WebSocket连接地址
    */
   getWebSocketUrl() {
-    const baseUrl = this.baseURL || API_BASE_URL || 'http://localhost:8000';
+    const baseUrl = this.baseURL || API_BASE_URL || 'http://192.168.31.249:8081';
     const wsProtocol = baseUrl.startsWith('https') ? 'wss' : 'ws';
     const wsHost = baseUrl.replace(/^https?:\/\//, '');
-    return `${wsProtocol}://${wsHost}/api/v1/ws`;
+    // WebSocket 路径是 /ws（不是 /api/v1/ws）
+    return `${wsProtocol}://${wsHost}/ws`;
   }
 }
 

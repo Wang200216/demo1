@@ -1,12 +1,12 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-const { createProxyMiddleware } = require('http-proxy-middleware');
 const https = require('https');
 const http = require('http');
 const { v4: uuidv4 } = require('uuid');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const serverCfg = require('./config/server-mode.node.js');
-const { getCurrentServerConfig, printConfig } = serverCfg;
+const { getCurrentServerConfig, printConfig, BACKEND_SERVER_URL, PRIORITIZE_BACKEND_SERVER } = serverCfg;
 
 const currentConfig = getCurrentServerConfig();
 const port = currentConfig.port; // 直接使用配置中的端口（mock和非mock模式都已配置为8080）
@@ -165,10 +165,22 @@ function handleDebateUpdate(data) {
 // CORS 配置 - 允许所有来源（开发环境）
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    credentials: true
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Content-Length', 'Content-Type'],
+    credentials: true,
+    maxAge: 86400 // 24小时预检请求缓存
 }));
+
+// 处理 OPTIONS 预检请求
+app.options('*', (req, res) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.header('Access-Control-Max-Age', '86400');
+    res.sendStatus(204);
+});
+
 app.use(express.json());
 
 // ==================== 后台管理路由（必须在代理之前） ====================
@@ -183,81 +195,57 @@ app.get('/admin', (req, res) => {
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
 // ==================== 后台管理路由结束 ====================
 
-// ==================== 后台管理 API（必须在代理之前） ====================
+// ==================== 优先代理到后端服务器（如果启用） ====================
+// 如果 PRIORITIZE_BACKEND_SERVER 为 true，所有 API 请求优先代理到后端服务器
+if (PRIORITIZE_BACKEND_SERVER && BACKEND_SERVER_URL) {
+	console.log('🔗 启用后端服务器优先模式：所有 API 请求将优先代理到后端服务器');
+	
+	// 配置代理中间件
+	const proxyOptions = {
+		target: BACKEND_SERVER_URL,
+		changeOrigin: true,
+		pathRewrite: {
+			// 保持原始路径不变
+		},
+		onProxyReq: (proxyReq, req, res) => {
+			console.log(`🔄 [优先代理] ${req.method} ${req.path} -> ${BACKEND_SERVER_URL}${req.path}`);
+		},
+		onProxyRes: (proxyRes, req, res) => {
+			console.log(`✅ [优先代理] ${req.path} <- ${proxyRes.statusCode} ${BACKEND_SERVER_URL}`);
+		},
+		onError: (err, req, res) => {
+			console.error(`❌ [优先代理错误] ${req.path}:`, err.message);
+			// 代理失败时，返回 502 错误，不继续到本地路由
+			if (!res.headersSent) {
+				res.status(502).json({
+					success: false,
+					error: 'Bad Gateway',
+					message: `无法连接到后端服务器 ${BACKEND_SERVER_URL}`,
+					path: req.path,
+					details: err.message
+				});
+			}
+		}
+	};
+	
+	// 创建代理中间件，使用 filter 函数精确控制哪些请求需要代理
+	const backendProxy = createProxyMiddleware({
+		filter: (pathname, req) => {
+			// 代理所有 /api/* 请求到后端服务器
+			return pathname.startsWith('/api');
+		},
+		...proxyOptions
+	});
+	
+	// 在所有本地路由之前，添加代理中间件
+	// 这样所有 API 请求会先尝试代理到后端服务器
+	app.use(backendProxy);
+}
+
+// ==================== 后台管理 API（仅在非优先后端模式时使用） ====================
 const db = require('./admin/db.js');
 
-// 管理API - 直播流管理（数据概览接口在后面定义）
-app.get('/api/admin/streams', (req, res) => {
-	try {
-		const streams = db.streams.getAll();
-		res.json(streams);
-	} catch (error) {
-		console.error('获取直播流失败:', error);
-		res.status(500).json({ error: '获取失败' });
-	}
-});
-
-app.get('/api/admin/streams/:id', (req, res) => {
-	try {
-		const stream = db.streams.getById(req.params.id);
-		if (!stream) {
-			return res.status(404).json({ error: '直播流不存在' });
-		}
-		res.json(stream);
-	} catch (error) {
-		console.error('获取直播流失败:', error);
-		res.status(500).json({ error: '获取失败' });
-	}
-});
-
-app.post('/api/admin/streams', (req, res) => {
-	try {
-		const stream = db.streams.create(req.body);
-		res.json(stream);
-	} catch (error) {
-		console.error('创建直播流失败:', error);
-		res.status(500).json({ error: '创建失败' });
-	}
-});
-
-app.put('/api/admin/streams/:id', (req, res) => {
-	try {
-		const stream = db.streams.update(req.params.id, req.body);
-		if (!stream) {
-			return res.status(404).json({ error: '直播流不存在' });
-		}
-		res.json(stream);
-	} catch (error) {
-		console.error('更新直播流失败:', error);
-		res.status(500).json({ error: '更新失败' });
-	}
-});
-
-app.delete('/api/admin/streams/:id', (req, res) => {
-	try {
-		const deleted = db.streams.delete(req.params.id);
-		if (!deleted) {
-			return res.status(404).json({ error: '直播流不存在' });
-		}
-		res.json({ success: true });
-	} catch (error) {
-		console.error('删除直播流失败:', error);
-		res.status(500).json({ error: '删除失败' });
-	}
-});
-
-app.post('/api/admin/streams/:id/toggle', (req, res) => {
-	try {
-		const stream = db.streams.toggle(req.params.id);
-		if (!stream) {
-			return res.status(404).json({ error: '直播流不存在' });
-		}
-		res.json(stream);
-	} catch (error) {
-		console.error('切换直播流状态失败:', error);
-		res.status(500).json({ error: '操作失败' });
-	}
-});
+// 管理API - 直播流管理（完整实现见下方 ==================== 直播流管理接口 ==================== 部分）
 
 // 管理API - 辩论设置
 app.get('/api/admin/debate', (req, res) => {
@@ -314,23 +302,7 @@ app.get('/api/admin/users/:id', (req, res) => {
 	}
 });
 
-// 获取当前辩题（小程序调用）
-app.get('/api/debate-topic', (req, res) => {
-	try {
-		const db = require('./admin/db.js');
-		const debate = db.debate.get();
-		res.json({
-			success: true,
-			data: {
-				id: 'debate-default-001',
-				title: debate.title,
-				description: debate.description
-			}
-		});
-	} catch (error) {
-		res.status(500).json({ success: false, message: "获取辩题时出错: " + error.message });
-	}
-});
+// 获取当前辩题（小程序调用）- 完整实现见下方 API路由 部分
 
 // 添加直播状态控制 API
 let globalLiveStatus = {
@@ -1559,20 +1531,6 @@ app.get('/api/admin/statistics/daily', (req, res) => {
     }
 });
 
-// 代理前端（5173 端口）到根路径（排除 /api 和 /admin）
-// 创建代理中间件实例（只创建一次，提高性能）
-const proxyMiddleware = createProxyMiddleware({
-	target: 'http://localhost:5173',
-	changeOrigin: true,
-	logLevel: 'warn',
-	// 支持 WebSocket（热重载需要）
-	ws: true,
-	onError: (err, req, res) => {
-		console.error('代理错误:', err);
-		res.status(500).json({ error: '前端服务不可用' });
-	}
-});
-
 // 添加请求日志中间件（调试用）
 app.use((req, res, next) => {
 	if (req.path.startsWith('/api')) {
@@ -1581,29 +1539,12 @@ app.use((req, res, next) => {
 	next();
 });
 
-// 使用条件中间件来确保 /api 和 /admin 路径不会被代理
-app.use((req, res, next) => {
-	// 如果是 /api 或 /admin 路径，直接跳过代理，继续处理
-	if (req.path.startsWith('/api') || req.path.startsWith('/admin')) {
-		return next();
-	}
-	// 其他路径使用代理
-	return proxyMiddleware(req, res, next);
-});
+// 静态文件服务（提供静态资源，如需要）
+// 注意：uni-app 小程序项目通常不需要在服务器提供前端静态文件
+// 如果需要提供构建后的静态文件，可以取消注释并配置正确路径
+// app.use(express.static(path.join(__dirname, 'dist')));
 
-// 静态文件服务
-app.use(express.static('.'));
-
-// 404处理器（调试用）
-app.use((req, res, next) => {
-	console.log(`⚠️  404未找到路由: ${req.method} ${req.url}`);
-	res.status(404).json({
-		error: 'Not Found',
-		path: req.url,
-		message: `路由 ${req.url} 未定义`,
-		server: 'Node.js/Express'
-	});
-});
+// 注意：代理中间件已移动到所有本地路由之后（见 server.js 末尾，在 404 处理器之前）
 
 
 // 模拟数据
@@ -2318,7 +2259,11 @@ app.post('/api/user-vote', (req, res) => {
 // 一、直播控制接口
 
 // 1.1 开始直播
-app.post('/api/admin/live/start', (req, res) => {
+// 支持 /api/admin/live/start 和 /api/v1/admin/live/start 两种路径
+app.post('/api/admin/live/start', handleStartLive);
+app.post('/api/v1/admin/live/start', handleStartLive);
+
+function handleStartLive(req, res) {
 	try {
 		const { streamId, autoStartAI = false, notifyUsers = true } = req.body;
 		
@@ -2433,10 +2378,14 @@ app.post('/api/admin/live/start', (req, res) => {
 			message: '开始直播失败: ' + error.message
 		});
 	}
-});
+}
 
 // 1.2 停止直播
-app.post('/api/admin/live/stop', (req, res) => {
+// 支持 /api/admin/live/stop 和 /api/v1/admin/live/stop 两种路径
+app.post('/api/admin/live/stop', handleStopLive);
+app.post('/api/v1/admin/live/stop', handleStopLive);
+
+function handleStopLive(req, res) {
 	try {
 		const { streamId, saveStatistics = true, notifyUsers = true } = req.body;
 		
@@ -2554,7 +2503,7 @@ app.post('/api/admin/live/stop', (req, res) => {
 			message: '停止直播失败: ' + error.message
 		});
 	}
-});
+}
 
 // 1.3 更新投票数据
 app.post('/api/admin/live/update-votes', (req, res) => {
@@ -3283,9 +3232,9 @@ app.post('/api/admin/streams', (req, res) => {
 });
 
 // 更新直播流
-app.put('/api/admin/streams/:streamId', (req, res) => {
+app.put('/api/admin/streams/:id', (req, res) => {
 	try {
-		const { streamId } = req.params;
+		const streamId = req.params.id; // 统一使用 :id 参数名
 		const { name, url, type, description, enabled } = req.body;
 		
 		// 查找流
@@ -3348,9 +3297,9 @@ app.put('/api/admin/streams/:streamId', (req, res) => {
 });
 
 // 删除直播流
-app.delete('/api/admin/streams/:streamId', (req, res) => {
+app.delete('/api/admin/streams/:id', (req, res) => {
 	try {
-		const { streamId } = req.params;
+		const streamId = req.params.id; // 统一使用 :id 参数名
 		
 		// 查找流
 		const stream = db.streams.getById(streamId);
@@ -3362,7 +3311,7 @@ app.delete('/api/admin/streams/:streamId', (req, res) => {
 		}
 		
 		// 检查是否正在使用
-		if (currentLiveStatus && currentLiveStatus.streamId === streamId) {
+		if (globalLiveStatus && globalLiveStatus.streamId === streamId) {
 			return res.status(400).json({
 				success: false,
 				message: '该直播流正在使用中，请先停止直播'
@@ -3402,6 +3351,9 @@ server.listen(port, '0.0.0.0', () => {
     if (wss) {
         console.log(`🌐 WebSocket 服务已启动: ws://localhost:${port}/ws`);
     }
+    if (BACKEND_SERVER_URL) {
+        console.log(`🔗 后端服务器代理: ${BACKEND_SERVER_URL}`);
+    }
     console.log('═══════════════════════════════════════');
     console.log('');
     
@@ -3415,6 +3367,74 @@ server.listen(port, '0.0.0.0', () => {
     // 启动直播计划检查
     startScheduleCheck();
     console.log('⏰ 直播计划定时检查已启动');
+});
+
+// ==================== 代理未匹配的 API 请求到后端服务器 ====================
+// 在所有本地路由之后，将未匹配的 API 请求代理到后端服务器
+// 注意：如果 PRIORITIZE_BACKEND_SERVER 为 true，这个代理不会执行（因为已经在前面处理了）
+// 注意：Express 路由是按顺序匹配的，如果本地路由已经匹配并处理了请求，就不会到达这里
+// 所以这个代理只会处理本地路由没有匹配的请求
+if (BACKEND_SERVER_URL && !PRIORITIZE_BACKEND_SERVER) {
+	// 配置代理中间件
+	const proxyOptions = {
+		target: BACKEND_SERVER_URL,
+		changeOrigin: true, // 修改请求头中的 origin
+		pathRewrite: {
+			// 保持原始路径不变，直接转发
+		},
+		onProxyReq: (proxyReq, req, res) => {
+			// 在转发请求前可以修改请求头
+			console.log(`🔄 [代理] ${req.method} ${req.path} -> ${BACKEND_SERVER_URL}${req.path}`);
+		},
+		onProxyRes: (proxyRes, req, res) => {
+			// 在收到响应后可以修改响应
+			console.log(`✅ [代理] ${req.path} <- ${proxyRes.statusCode} ${BACKEND_SERVER_URL}`);
+		},
+		onError: (err, req, res) => {
+			console.error(`❌ [代理错误] ${req.path}:`, err.message);
+			// 如果响应还没有发送，返回错误信息
+			if (!res.headersSent) {
+				res.status(502).json({
+					success: false,
+					error: 'Bad Gateway',
+					message: `无法连接到后端服务器 ${BACKEND_SERVER_URL}`,
+					path: req.path,
+					details: err.message
+				});
+			}
+		}
+	};
+	
+	// 创建代理中间件
+	// 注意：createProxyMiddleware 的第一个参数是配置对象，路径在 app.use 中指定
+	const backendProxy = createProxyMiddleware(proxyOptions);
+	
+	// 在所有本地路由之后，404处理器之前，添加代理中间件
+	// 这样，如果本地路由没有匹配，就会尝试代理到后端服务器
+	app.use('/api', backendProxy);
+}
+
+// ==================== 404处理器（必须在所有路由之后） ====================
+// 404处理器（API 路由）
+app.use((req, res) => {
+	// 如果是 API 请求，返回 JSON 格式错误
+	if (req.path.startsWith('/api')) {
+		console.log(`⚠️  API路由未找到: ${req.method} ${req.path}`);
+		res.status(404).json({
+			success: false,
+			error: 'Not Found',
+			path: req.path,
+			message: `API路由 ${req.path} 未定义，且无法连接到后端服务器`
+		});
+	} else {
+		// 其他请求返回 404
+		console.log(`⚠️  路由未找到: ${req.method} ${req.url}`);
+		res.status(404).json({
+			error: 'Not Found',
+			path: req.url,
+			message: `路由 ${req.url} 未定义`
+		});
+	}
 });
 
 module.exports = app;
