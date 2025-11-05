@@ -2028,13 +2028,27 @@
 				try {
 					// 传递 streamId 参数（如果存在）
 					const response = await apiService.getDebateTopic(this.streamId);
-					if (response.success) {
+					if (response && response.success && response.data) {
 						const data = response.data;
-						this.debateTitle = data.title;
-						this.debateDescription = data.description;
-						this.currentDebateTopic = data.title;
+						this.debateTitle = data.title || '';
+						this.debateDescription = data.description || '';
+						this.currentDebateTopic = data.title || '';
+					} else if (response && response.data) {
+						// 兼容直接返回数据的情况
+						const data = response.data;
+						this.debateTitle = data.title || '';
+						this.debateDescription = data.description || '';
+						this.currentDebateTopic = data.title || '';
+					} else if (response && response.title) {
+						// 兼容直接返回辩题对象的情况
+						this.debateTitle = response.title || '';
+						this.debateDescription = response.description || '';
+						this.currentDebateTopic = response.title || '';
+					} else {
+						console.warn('⚠️ 获取辩题失败：响应格式不符合预期', response);
 					}
 				} catch (error) {
+					console.error('❌ 获取辩题失败:', error);
 					uni.showToast({
 						title: '获取辩题失败',
 						icon: 'error'

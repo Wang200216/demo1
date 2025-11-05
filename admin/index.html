@@ -200,6 +200,7 @@
 									<th>流名称</th>
 									<th>流地址</th>
 									<th>类型</th>
+									<th>辩题</th>
 									<th>状态</th>
 									<th>创建时间</th>
 									<th>操作</th>
@@ -207,7 +208,7 @@
 							</thead>
 							<tbody id="streams-table-body">
 								<tr>
-									<td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+									<td colspan="7" style="text-align: center; padding: 40px; color: #999;">
 										暂无直播流，请点击"添加直播流"按钮
 									</td>
 								</tr>
@@ -549,6 +550,52 @@
 						<button type="button" class="btn btn-secondary" id="cancel-stream-btn">取消</button>
 						<button type="submit" class="btn btn-primary">
 							<span id="save-stream-btn-text">保存</span>
+						</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<!-- 设置辩题弹窗 -->
+	<div id="debate-modal" class="modal">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3 id="debate-modal-title">设置辩题</h3>
+				<span class="modal-close" id="close-debate-modal">&times;</span>
+			</div>
+			<div class="modal-body">
+				<form id="debate-form">
+					<input type="hidden" id="debate-stream-id">
+					
+					<div class="form-group">
+						<label>辩题标题 <span style="color: red;">*</span></label>
+						<input type="text" id="debate-title" class="form-input" placeholder="例如：我是彭于晏" required>
+						<small style="color: #666; display: block; margin-top: 5px;">辩题的核心问题或主题</small>
+					</div>
+					
+					<div class="form-group">
+						<label>辩题描述</label>
+						<textarea id="debate-description" class="form-textarea" placeholder="（可选）详细描述辩题背景和意义" rows="3"></textarea>
+					</div>
+					
+					<div class="form-group">
+						<label>正方立场 <span style="color: red;">*</span></label>
+						<input type="text" id="debate-left-position" class="form-input" placeholder="例如：会按" required>
+						<small style="color: #666; display: block; margin-top: 5px;">正方（左方）的立场观点</small>
+					</div>
+					
+					<div class="form-group">
+						<label>反方立场 <span style="color: red;">*</span></label>
+						<input type="text" id="debate-right-position" class="form-input" placeholder="例如：不会按" required>
+						<small style="color: #666; display: block; margin-top: 5px;">反方（右方）的立场观点</small>
+					</div>
+					
+					<div class="modal-actions" style="margin-top: 25px;">
+						<button type="button" class="btn btn-secondary" id="cancel-debate-btn">取消</button>
+						<button type="button" class="btn btn-danger" id="delete-debate-btn" style="display: none;">删除辩题</button>
+						<button type="submit" class="btn btn-primary">
+							<span id="save-debate-btn-text">保存</span>
 						</button>
 					</div>
 				</form>

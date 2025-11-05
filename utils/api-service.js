@@ -435,10 +435,54 @@ class ApiService {
     const url = streamId 
       ? `/api/v1/debate-topic?stream_id=${streamId}`
       : '/api/v1/debate-topic';
-    return await this.request({
+    const response = await this.request({
       url,
       method: 'GET'
     });
+    
+    // 处理响应格式，确保兼容不同的响应格式
+    let debateData = null;
+    
+    // 处理响应格式：{success: true, data: {...}} 或直接返回数据
+    if (response && response.success && response.data) {
+      debateData = response.data;
+    } else if (response && response.data) {
+      debateData = response.data;
+    } else if (response && typeof response === 'object' && !response.success) {
+      // 直接返回数据对象
+      debateData = response;
+    } else {
+      // 如果响应格式不符合预期，返回 null
+      console.warn('⚠️ 辩题响应格式不符合预期:', response);
+      return null;
+    }
+    
+    // 统一字段名称，兼容 leftPosition/rightPosition 和 leftSide/rightSide
+    if (debateData) {
+      // 如果后端返回的是 leftPosition/rightPosition，转换为 leftSide/rightSide
+      if (debateData.leftPosition && !debateData.leftSide) {
+        debateData.leftSide = debateData.leftPosition;
+      }
+      if (debateData.rightPosition && !debateData.rightSide) {
+        debateData.rightSide = debateData.rightPosition;
+      }
+      
+      // 返回统一格式
+      return {
+        success: true,
+        data: {
+          id: debateData.id || null,
+          title: debateData.title || '',
+          description: debateData.description || '',
+          leftSide: debateData.leftSide || debateData.leftPosition || '',
+          rightSide: debateData.rightSide || debateData.rightPosition || '',
+          leftPosition: debateData.leftPosition || debateData.leftSide || '',
+          rightPosition: debateData.rightPosition || debateData.rightSide || ''
+        }
+      };
+    }
+    
+    return null;
   }
 
   /**

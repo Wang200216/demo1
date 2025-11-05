@@ -43,12 +43,12 @@
 						</view>
 						
 						<!-- 辩题信息 -->
-						<view v-if="stream.debateTopic" class="debate-info">
+						<view v-if="stream.debateTopic && stream.debateTopic.title" class="debate-info">
 							<text class="debate-title">{{ stream.debateTopic.title }}</text>
 							<view class="debate-sides">
-								<text class="side left-side">⚔️ {{ stream.debateTopic.leftSide }}</text>
+								<text class="side left-side">⚔️ {{ stream.debateTopic.leftSide || stream.debateTopic.leftPosition || '' }}</text>
 								<text class="vs">VS</text>
-								<text class="side right-side">🛡️ {{ stream.debateTopic.rightSide }}</text>
+								<text class="side right-side">🛡️ {{ stream.debateTopic.rightSide || stream.debateTopic.rightPosition || '' }}</text>
 							</view>
 						</view>
 						
@@ -251,7 +251,18 @@ export default {
 				const votes = await apiService.getVotesStatistics(stream.id);
 				
 				// 获取辩题信息（传递当前流的ID）
-				const debate = await apiService.getDebateTopic(stream.id);
+				const debateResponse = await apiService.getDebateTopic(stream.id);
+				
+				// 处理辩题数据，确保格式统一
+				let debateTopic = null;
+				if (debateResponse && debateResponse.success && debateResponse.data) {
+					debateTopic = debateResponse.data;
+				} else if (debateResponse && debateResponse.data) {
+					debateTopic = debateResponse.data;
+				} else if (debateResponse && debateResponse.title) {
+					// 直接返回辩题对象的情况
+					debateTopic = debateResponse;
+				}
 				
 				return {
 					...stream,
@@ -260,7 +271,7 @@ export default {
 					totalVotes: votes?.totalVotes || 0,
 					leftPercentage: votes?.leftPercentage || 50,
 					rightPercentage: votes?.rightPercentage || 50,
-					debateTopic: debate
+					debateTopic: debateTopic
 				};
 			} catch (error) {
 				console.warn('⚠️ 获取直播流详细信息失败:', stream.id, error);

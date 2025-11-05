@@ -46,6 +46,42 @@ function bindStreamManagementEvents() {
 		});
 	}
 	
+	// ==================== 辩题弹窗事件 ====================
+	
+	// 关闭辩题弹窗按钮
+	const closeDebateModalBtn = document.getElementById('close-debate-modal');
+	if (closeDebateModalBtn) {
+		closeDebateModalBtn.addEventListener('click', closeDebateModal);
+	}
+	
+	// 取消辩题按钮
+	const cancelDebateBtn = document.getElementById('cancel-debate-btn');
+	if (cancelDebateBtn) {
+		cancelDebateBtn.addEventListener('click', closeDebateModal);
+	}
+	
+	// 辩题表单提交
+	const debateForm = document.getElementById('debate-form');
+	if (debateForm) {
+		debateForm.addEventListener('submit', handleDebateFormSubmit);
+	}
+	
+	// 删除辩题按钮
+	const deleteDebateBtn = document.getElementById('delete-debate-btn');
+	if (deleteDebateBtn) {
+		deleteDebateBtn.addEventListener('click', handleDeleteDebate);
+	}
+	
+	// 点击辩题弹窗外部关闭
+	const debateModal = document.getElementById('debate-modal');
+	if (debateModal) {
+		debateModal.addEventListener('click', (e) => {
+			if (e.target === debateModal) {
+				closeDebateModal();
+			}
+		});
+	}
+	
 	console.log('✅ 直播流管理事件绑定完成');
 }
 
@@ -56,6 +92,8 @@ async function loadStreamsList() {
 	try {
 		console.log('📡 加载直播流列表...');
 		
+	// 尝试获取包含辩题信息的列表
+	// 注意：如果后端接口支持 includeDebateTopic 参数，可以在这里添加
 	const result = await getStreamsList();
 	console.log('📦 API返回数据:', result);
 	
@@ -111,7 +149,7 @@ function renderStreamsTable(streams) {
 	if (!streams || streams.length === 0) {
 		tbody.innerHTML = `
 			<tr>
-				<td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+				<td colspan="7" style="text-align: center; padding: 40px; color: #999;">
 					暂无直播流，请点击"添加直播流"按钮
 				</td>
 			</tr>
@@ -119,7 +157,15 @@ function renderStreamsTable(streams) {
 		return;
 	}
 	
-	tbody.innerHTML = streams.map(stream => `
+	tbody.innerHTML = streams.map(stream => {
+		// 获取辩题信息
+		const debateTopic = stream.debateTopic || null;
+		const debateTitle = debateTopic ? escapeHtml(debateTopic.title) : '未设置';
+		const debateBadge = debateTopic 
+			? `<span class="badge badge-success" title="${escapeHtml(debateTopic.title)}">✓ 已设置</span>`
+			: `<span class="badge badge-secondary">✗ 未设置</span>`;
+		
+		return `
 		<tr>
 			<td>${escapeHtml(stream.name)}</td>
 			<td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(stream.url)}">
@@ -129,6 +175,12 @@ function renderStreamsTable(streams) {
 				<span class="badge badge-${stream.type === 'hls' ? 'success' : stream.type === 'rtmp' ? 'warning' : 'info'}">
 					${stream.type.toUpperCase()}
 				</span>
+			</td>
+			<td>
+				${debateBadge}
+				<div style="font-size: 12px; color: #666; margin-top: 4px;" title="${debateTitle}">
+					${debateTitle.length > 20 ? debateTitle.substring(0, 20) + '...' : debateTitle}
+				</div>
 			</td>
 			<td>
 				<span class="badge badge-${stream.enabled ? 'success' : 'secondary'}">
@@ -142,12 +194,16 @@ function renderStreamsTable(streams) {
 				<button class="btn btn-sm btn-primary" onclick="openEditStreamModal('${stream.id}')">
 					✏️ 编辑
 				</button>
-				<button class="btn btn-sm btn-danger" onclick="handleDeleteStream('${stream.id}', '${escapeHtml(stream.name)}')">
+				<button class="btn btn-sm btn-info" onclick="openDebateModal('${stream.id}')" style="margin-left: 5px;">
+					💬 辩题
+				</button>
+				<button class="btn btn-sm btn-danger" onclick="handleDeleteStream('${stream.id}', '${escapeHtml(stream.name)}')" style="margin-left: 5px;">
 					🗑️ 删除
 				</button>
 			</td>
 		</tr>
-	`).join('');
+		`;
+	}).join('');
 }
 
 /**
@@ -326,6 +382,189 @@ async function handleDeleteStream(streamId, streamName) {
 		
 	} catch (error) {
 		console.error('❌ 删除直播流失败:', error);
+		showToast('删除失败：' + error.message, 'error');
+	}
+}
+
+// ==================== 辩题管理功能 ====================
+
+/**
+ * 打开设置辩题弹窗
+ */
+async function openDebateModal(streamId) {
+	try {
+		console.log('打开设置辩题弹窗:', streamId);
+		
+		const modal = document.getElementById('debate-modal');
+		const title = document.getElementById('debate-modal-title');
+		const deleteBtn = document.getElementById('delete-debate-btn');
+		
+		if (!modal || !title) {
+			console.error('找不到辩题弹窗元素');
+			return;
+		}
+		
+		// 设置标题
+		title.textContent = '设置辩题';
+		
+		// 保存流ID
+		document.getElementById('debate-stream-id').value = streamId;
+		
+		// 重置表单
+		document.getElementById('debate-form').reset();
+		document.getElementById('debate-stream-id').value = streamId;
+		
+		// 尝试获取现有辩题
+		try {
+			const debateTopic = await getStreamDebateTopic(streamId);
+			if (debateTopic && debateTopic.data) {
+				const data = debateTopic.data;
+				// 填充表单
+				document.getElementById('debate-title').value = data.title || '';
+				document.getElementById('debate-description').value = data.description || '';
+				document.getElementById('debate-left-position').value = data.leftPosition || '';
+				document.getElementById('debate-right-position').value = data.rightPosition || '';
+				
+				// 显示删除按钮
+				if (deleteBtn) {
+					deleteBtn.style.display = 'inline-block';
+				}
+				
+				// 更新标题
+				title.textContent = '编辑辩题';
+			} else {
+				// 没有辩题，隐藏删除按钮
+				if (deleteBtn) {
+					deleteBtn.style.display = 'none';
+				}
+			}
+		} catch (error) {
+			// 如果获取失败（可能是404），说明没有辩题，这是正常的
+			console.log('该直播流尚未设置辩题');
+			if (deleteBtn) {
+				deleteBtn.style.display = 'none';
+			}
+		}
+		
+		// 显示弹窗
+		modal.style.display = 'flex';
+		
+	} catch (error) {
+		console.error('❌ 打开辩题弹窗失败:', error);
+		showToast('打开辩题弹窗失败：' + error.message, 'error');
+	}
+}
+
+/**
+ * 关闭辩题弹窗
+ */
+function closeDebateModal() {
+	const modal = document.getElementById('debate-modal');
+	if (modal) {
+		modal.style.display = 'none';
+	}
+	console.log('关闭辩题弹窗');
+}
+
+/**
+ * 处理辩题表单提交
+ */
+async function handleDebateFormSubmit(e) {
+	e.preventDefault();
+	
+	try {
+		const streamId = document.getElementById('debate-stream-id').value;
+		const debateData = {
+			title: document.getElementById('debate-title').value.trim(),
+			description: document.getElementById('debate-description').value.trim(),
+			leftPosition: document.getElementById('debate-left-position').value.trim(),
+			rightPosition: document.getElementById('debate-right-position').value.trim()
+		};
+		
+		// 验证
+		if (!debateData.title || !debateData.leftPosition || !debateData.rightPosition) {
+			showToast('请填写所有必填项（辩题标题、正方立场、反方立场）', 'error');
+			return;
+		}
+		
+		console.log('提交辩题表单:', streamId, debateData);
+		
+		// 禁用提交按钮
+		const submitBtn = document.querySelector('#debate-form button[type="submit"]');
+		const btnText = document.getElementById('save-debate-btn-text');
+		if (submitBtn) submitBtn.disabled = true;
+		if (btnText) btnText.textContent = '保存中...';
+		
+		try {
+			// 先尝试获取现有辩题，判断是创建还是更新
+			let isUpdate = false;
+			try {
+				await getStreamDebateTopic(streamId);
+				isUpdate = true;
+			} catch (error) {
+				// 404 说明没有辩题，需要创建
+				isUpdate = false;
+			}
+			
+			if (isUpdate) {
+				// 更新
+				console.log('调用更新辩题API:', streamId);
+				await updateStreamDebateTopic(streamId, debateData);
+				showToast('辩题更新成功！', 'success');
+			} else {
+				// 创建
+				console.log('调用设置辩题API:', streamId);
+				await setStreamDebateTopic(streamId, debateData);
+				showToast('辩题设置成功！', 'success');
+			}
+			
+			// 关闭弹窗
+			closeDebateModal();
+			
+			// 重新加载列表
+			await loadStreamsList();
+			
+		} finally {
+			// 恢复按钮
+			if (submitBtn) submitBtn.disabled = false;
+			if (btnText) btnText.textContent = '保存';
+		}
+		
+	} catch (error) {
+		console.error('❌ 保存辩题失败:', error);
+		showToast('保存失败：' + error.message, 'error');
+	}
+}
+
+/**
+ * 删除辩题
+ */
+async function handleDeleteDebate() {
+	const streamId = document.getElementById('debate-stream-id').value;
+	
+	if (!streamId) {
+		showToast('无法获取直播流ID', 'error');
+		return;
+	}
+	
+	if (!confirm('确定要删除该直播流的辩题吗？\n\n删除后，该直播流将使用全局辩题。')) {
+		console.log('用户取消删除');
+		return;
+	}
+	
+	try {
+		console.log('调用删除辩题API:', streamId);
+		await deleteStreamDebateTopic(streamId);
+		showToast('辩题删除成功！', 'success');
+		
+		// 关闭弹窗
+		closeDebateModal();
+		
+		// 重新加载列表
+		await loadStreamsList();
+		
+	} catch (error) {
+		console.error('❌ 删除辩题失败:', error);
 		showToast('删除失败：' + error.message, 'error');
 	}
 }

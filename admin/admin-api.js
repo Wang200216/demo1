@@ -446,6 +446,56 @@ async function toggleStream(streamId) {
 	});
 }
 
+// ==================== 直播流辩题管理接口 ====================
+
+/**
+ * 为直播流设置辩题
+ * @param {string} streamId - 直播流ID
+ * @param {Object} debateData - 辩题数据
+ * @returns {Promise<Object|null>}
+ */
+async function setStreamDebateTopic(streamId, debateData) {
+	return await apiRequest(`/api/v1/admin/streams/${streamId}/debate-topic`, {
+		method: 'POST',
+		body: JSON.stringify(debateData)
+	});
+}
+
+/**
+ * 更新直播流辩题
+ * @param {string} streamId - 直播流ID
+ * @param {Object} debateData - 辩题数据
+ * @returns {Promise<Object|null>}
+ */
+async function updateStreamDebateTopic(streamId, debateData) {
+	return await apiRequest(`/api/v1/admin/streams/${streamId}/debate-topic`, {
+		method: 'PUT',
+		body: JSON.stringify(debateData)
+	});
+}
+
+/**
+ * 获取直播流辩题
+ * @param {string} streamId - 直播流ID
+ * @returns {Promise<Object|null>}
+ */
+async function getStreamDebateTopic(streamId) {
+	return await apiRequest(`/api/v1/admin/streams/${streamId}/debate-topic`, {
+		method: 'GET'
+	});
+}
+
+/**
+ * 删除直播流辩题
+ * @param {string} streamId - 直播流ID
+ * @returns {Promise<Object|null>}
+ */
+async function deleteStreamDebateTopic(streamId) {
+	return await apiRequest(`/api/v1/admin/streams/${streamId}/debate-topic`, {
+		method: 'DELETE'
+	});
+}
+
 // ==================== 辅助功能 ====================
 
 // 全局状态（用于UI显示）- 如果admin.js已经声明，则使用已有的
