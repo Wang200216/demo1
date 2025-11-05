@@ -96,6 +96,33 @@
 						@fullscreenchange="handleFullScreenChange"
 						@audiovolumenotify="handleAudioVolumeNotify">
 					</live-player>
+
+					<!-- 调试信息显示区域 -->
+					<view class="debug-info" v-if="liveStreamUrl">
+						<view class="debug-item">
+							<text class="debug-label">流地址:</text>
+							<text class="debug-value">{{ liveStreamUrl }}</text>
+						</view>
+						<view class="debug-item">
+							<text class="debug-label">播放模式:</text>
+							<text class="debug-value">{{ getPlayerMode() }}</text>
+						</view>
+						<view class="debug-item">
+							<text class="debug-label">播放状态:</text>
+							<text class="debug-value">{{ isLiveStarted ? '✅ 播放中' : '❌ 未开始' }}</text>
+						</view>
+						<view class="debug-item">
+							<text class="debug-label">流格式:</text>
+							<text class="debug-value">{{ liveStreamUrl.includes('.flv') ? 'FLV' : liveStreamUrl.includes('.m3u8') ? 'HLS' : '其他' }}</text>
+						</view>
+					</view>
+
+					<!-- 调试按钮 -->
+					<view class="debug-buttons" v-if="liveStreamUrl">
+						<view class="debug-btn" @click="verifyStreamAccessibility()">
+							<text>🔍 测试流访问</text>
+						</view>
+					</view>
 					<!-- HLS 连接状态指示器 -->
 					<view class="hls-status-indicator" v-if="hlsStatus.show">
 						<text class="hls-status-text" :class="hlsStatus.type">{{ hlsStatus.message }}</text>
@@ -984,6 +1011,45 @@
 			},
 
 			/**
+			 * 验证直播流是否可访问（关键调试功能）
+			 */
+			async verifyStreamAccessibility() {
+				if (!this.liveStreamUrl) {
+					console.log('⚠️ 没有直播流地址');
+					return false;
+				}
+
+				console.log(`🔍 [验证直播流] 正在检查流地址: ${this.liveStreamUrl}`);
+
+				// 检查是否是 FLV 格式
+				if (this.liveStreamUrl.includes('.flv')) {
+					// FLV 流检查方法
+					try {
+						// 使用 API 服务检查流状态
+						const response = await uni.request({
+							url: this.liveStreamUrl,
+							method: 'HEAD', // 只检查头部，不下载整个文件
+							timeout: 5000
+						});
+
+						console.log(`🔍 [验证结果] FLV 流访问状态: ${response.statusCode}`);
+						if (response.statusCode === 200) {
+							console.log('✅ [验证成功] FLV 流地址可访问');
+							return true;
+						} else {
+							console.log(`⚠️ [验证失败] FLV 流返回状态码: ${response.statusCode}`);
+							return false;
+						}
+					} catch (error) {
+						console.log(`❌ [验证失败] FLV 流无法访问:`, error);
+						return false;
+					}
+				}
+
+				return true; // 其他格式暂不验证
+			},
+
+			/**
 			 * 根据流格式获取最小缓冲时间
 			 * FLV 格式延迟较小（推荐1-2秒）
 			 * HLS 格式延迟较大（推荐2-3秒）
@@ -1143,12 +1209,18 @@
 								duration: 2000
 							});
 							
+							// 验证直播流是否可访问
+							const isStreamAccessible = await this.verifyStreamAccessibility();
+							if (!isStreamAccessible) {
+								console.warn('⚠️ 直播流地址不可访问，可能导致播放失败');
+							}
+
 							// 如果直播未开始，但已有流地址，尝试开始播放
 							if (!this.isLiveStarted && this.liveStreamUrl) {
 								console.log('💡 流地址已设置，但直播未开始，尝试开始播放...');
 								// 这里不自动开始，等待服务器通知或用户操作
 							}
-							
+
 							return true;
 							} else {
 								console.error('❌ HLS转换失败，使用原始地址');
@@ -8735,5 +8807,58 @@
 		75% {
 			transform: rotateX(1deg) rotateY(-2deg);
 		}
+	}
+
+	/* 调试信息样式 */
+	.debug-info {
+		position: absolute;
+		top: 10px;
+		left: 10px;
+		background: rgba(0, 0, 0, 0.8);
+		color: white;
+		padding: 10px;
+		border-radius: 8px;
+		font-size: 12px;
+		z-index: 1000;
+		max-width: 300px;
+	}
+
+	.debug-item {
+		margin-bottom: 5px;
+		display: flex;
+		align-items: center;
+	}
+
+	.debug-label {
+		font-weight: bold;
+		min-width: 60px;
+		margin-right: 10px;
+	}
+
+	.debug-value {
+		flex: 1;
+		word-break: break-all;
+		color: #00ff00;
+	}
+
+	.debug-buttons {
+		position: absolute;
+		bottom: 10px;
+		right: 10px;
+		z-index: 1001;
+	}
+
+	.debug-btn {
+		background: rgba(0, 123, 255, 0.8);
+		color: white;
+		padding: 5px 10px;
+		border-radius: 5px;
+		font-size: 12px;
+		margin: 2px;
+		cursor: pointer;
+	}
+
+	.debug-btn:active {
+		background: rgba(0, 86, 179, 0.8);
 	}
 </style>
