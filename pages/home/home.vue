@@ -1316,7 +1316,7 @@
 						}
 					}
 				} catch (error) {
-					console.warn('⚠️ 获取直播状态失败:', error.message);
+					console.warn('⚠️ 获取直播状态失败:', error || '未知错误');
 					// 不抛出错误，避免影响页面加载
 				}
 			},
