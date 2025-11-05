@@ -73,29 +73,22 @@
 				
 				<view class="live-video">
 					<!-- #ifdef MP-WEIXIN -->
-					<!-- 微信小程序直播播放器 - 支持 FLV/RTMP/HLS -->
-					<live-player
+					<!-- 临时使用原生 video 组件避开 live-player 权限问题 -->
+					<video
 						v-if="isLiveStarted && liveStreamUrl"
 						:key="liveStreamUrl"
 						:src="liveStreamUrl"
 						class="live-player"
-						:mode="getPlayerMode()"
 						autoplay
 						:muted="isMuted"
 						object-fit="contain"
-						:min-cache="getPlayerMinCache()"
-						:max-cache="getPlayerMaxCache()"
-						:background-mute="false"
-						:enable-auto-rotation="false"
-						:orientation="hlsConfig.orientation"
-						:picture-in-picture-mode="hlsConfig.pipMode"
-						:sound-mode="hlsConfig.soundMode"
-						@statechange="handleLiveStateChange"
-						@error="handleLiveError"
-						@netstatus="handleNetStatus"
-						@fullscreenchange="handleFullScreenChange"
-						@audiovolumenotify="handleAudioVolumeNotify">
-					</live-player>
+						show-center-play-btn="false"
+						:show-progress="false"
+						:enable-progress-gesture="false"
+						:show-fullscreen-btn="false"
+						:controls="false"
+						@error="handleVideoError">
+					</video>
 
 					<!-- 调试信息显示区域 -->
 					<view class="debug-info" v-if="liveStreamUrl">
@@ -1748,16 +1741,30 @@
 		},
 
 		// 处理直播错误
+		handleVideoError(e) {
+			const errCode = e.detail.errCode;
+			const errMsg = e.detail.errMsg || '';
+
+			console.error(`❌ [VIDEO错误] Code: ${errCode}, Message: ${errMsg}`);
+
+			// 检查FLV格式是否支持
+			if (this.liveStreamUrl && this.liveStreamUrl.includes('.flv')) {
+				console.error('⚠️ [FLV播放失败] 原生 video 组件可能不支持 FLV 格式');
+				console.error('✅ 建议改用 HLS 格式或使用第三方播放器组件');
+			}
+		},
+
+		// 保留原有的 live-player 错误处理
 		handleLiveError(e) {
 			const errCode = e.detail.errCode;
 			const errMsg = e.detail.errMsg || '';
-			
+
 			console.error(`❌ [HLS错误] Code: ${errCode}, Message: ${errMsg}`);
-			
+
 			this.liveStatus = 'error';
 			this.hlsStats.errorCount++;
 			this.hlsStats.lastErrorTime = Date.now();
-			
+
 			// 检查是否是权限错误
 			if (errMsg && errMsg.includes('jsapi has no permission')) {
 				// 检测是否在真机上运行
@@ -1766,7 +1773,7 @@
 					const systemInfo = uni.getSystemInfoSync();
 					// 如果在真机上（非开发者工具），说明是真正的权限问题
 					const isRealDevice = systemInfo.platform !== 'devtools';
-					
+
 					if (isRealDevice) {
 						// 真机上的权限错误：需要配置微信公众平台
 						console.error('❌ [权限错误] live-player 组件在真机上仍然无法使用');
