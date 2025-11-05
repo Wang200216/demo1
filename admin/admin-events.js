@@ -120,41 +120,33 @@ function initAIEvents() {
 	const startAIBtn = document.getElementById('start-ai-btn');
 	if (startAIBtn) {
 		startAIBtn.addEventListener('click', async () => {
-			// ⚠️ 重要修改：现在必须通过直播接口启动AI，不再使用单独的 /api/admin/ai/start 接口
 			try {
-				// 先检查当前直播状态
-				const dashboard = await fetchDashboard();
-				if (!dashboard) {
-					console.error('获取直播状态失败');
-					return;
-				}
+				// 获取AI设置（从表单中获取）
+				const settings = {
+					mode: document.getElementById('ai-mode')?.value || 'realtime',
+					interval: parseInt(document.getElementById('ai-interval')?.value) || 5000,
+					sensitivity: document.getElementById('ai-sensitivity')?.value || 'high',
+					minConfidence: parseFloat(document.getElementById('ai-confidence')?.value) || 0.7
+				};
 				
-				const isLive = dashboard.isLive || false;
-				const streamId = dashboard.streamId || null;
+				console.log('🚀 启动AI识别，设置:', settings);
 				
-				if (!isLive) {
-					console.warn('⚠️ AI实时识别需要先开始直播！请先点击"开始直播"按钮，并勾选"自动启动AI识别"选项。');
-					return;
-				}
+				// 禁用按钮，防止重复点击
+				startAIBtn.disabled = true;
+				const originalText = startAIBtn.textContent;
+				startAIBtn.textContent = '启动中...';
 				
-				// 如果直播已开始，需要重新启动直播来启用AI
-				if (!confirm('确定要启动AI识别吗？\n\n⚠️ 注意：这将重新启动直播以启用AI识别功能。')) {
-					return;
-				}
-				
-			// ⚠️ 重要：使用直播接口启动，并设置 autoStartAI: true
-			// 先停止当前直播（不通知用户，避免干扰）
-			await stopLive(streamId, true, false);
-			
-			// 立即重新启动直播并自动启动AI
-			console.log('🔄 重新启动直播以启用AI识别...');
-			const result = await startLive(streamId, true, true);
+				// 调用AI启动接口
+				const result = await startAI(settings, true);
 				
 				if (result && result.success) {
-					console.log('✅ AI识别已通过直播接口启动');
-					console.log('📺 直播流地址:', result.streamUrl);
-					
+					console.log('✅ AI识别启动成功');
 					updateAIControlButtons('running');
+					
+					// 显示成功提示
+					if (typeof showToast === 'function') {
+						showToast('AI识别启动成功！', 'success');
+					}
 					
 					// 启动成功后，延迟订阅AI内容更新（等待后端ASR服务就绪）
 					setTimeout(() => {
@@ -175,32 +167,50 @@ function initAIEvents() {
 					}, 2000); // 延迟2秒，等待后端ASR服务启动
 				} else {
 					console.error('❌ 启动AI识别失败:', result);
+					if (typeof showToast === 'function') {
+						showToast('启动AI识别失败：' + (result?.message || '未知错误'), 'error');
+					}
 				}
 			} catch (error) {
 				console.error('❌ 启动AI识别失败:', error);
+				if (typeof showToast === 'function') {
+					showToast('启动AI识别失败：' + error.message, 'error');
+				}
+			} finally {
+				// 恢复按钮状态
+				startAIBtn.disabled = false;
+				startAIBtn.textContent = originalText;
 			}
 		});
 	}
 	
-	// 停止AI识别（改为通过直播接口停止）
+	// 停止AI识别
 	const stopAIBtn = document.getElementById('stop-ai-btn');
 	if (stopAIBtn) {
 		stopAIBtn.addEventListener('click', async () => {
-			if (!confirm('确定要停止AI识别吗？\n（这将停止整个直播）')) {
+			if (!confirm('确定要停止AI识别吗？')) {
 				return;
 			}
 			
 			try {
-				// 获取当前直播流ID
-				const dashboard = await fetchDashboard();
-				const streamId = dashboard?.streamId || null;
+				console.log('⏹️ 停止AI识别...');
 				
-				// ⚠️ 重要修改：停止直播时会自动停止AI，无需单独调用 stopAI
-				const result = await stopLive(streamId, true, true);
+				// 禁用按钮，防止重复点击
+				stopAIBtn.disabled = true;
+				const originalText = stopAIBtn.textContent;
+				stopAIBtn.textContent = '停止中...';
+				
+				// 调用AI停止接口
+				const result = await stopAI(true, true);
 				
 				if (result && result.success) {
-					console.log('✅ AI识别已通过直播接口停止');
+					console.log('✅ AI识别已停止');
 					updateAIControlButtons('stopped');
+					
+					// 显示成功提示
+					if (typeof showToast === 'function') {
+						showToast('AI识别已停止', 'success');
+					}
 					
 					// 清理AI内容刷新定时器
 					if (window.aiContentRefreshTimer) {
@@ -210,9 +220,19 @@ function initAIEvents() {
 					}
 				} else {
 					console.error('❌ 停止AI识别失败:', result);
+					if (typeof showToast === 'function') {
+						showToast('停止AI识别失败：' + (result?.message || '未知错误'), 'error');
+					}
 				}
 			} catch (error) {
 				console.error('❌ 停止AI识别失败:', error);
+				if (typeof showToast === 'function') {
+					showToast('停止AI识别失败：' + error.message, 'error');
+				}
+			} finally {
+				// 恢复按钮状态
+				stopAIBtn.disabled = false;
+				stopAIBtn.textContent = originalText;
 			}
 		});
 	}
@@ -221,9 +241,37 @@ function initAIEvents() {
 	const pauseAIBtn = document.getElementById('pause-ai-btn');
 	if (pauseAIBtn) {
 		pauseAIBtn.addEventListener('click', async () => {
-			const result = await toggleAI('pause', true);
-			if (result) {
-				updateAIControlButtons('paused');
+			try {
+				console.log('⏸️ 暂停AI识别...');
+				
+				// 禁用按钮，防止重复点击
+				pauseAIBtn.disabled = true;
+				const originalText = pauseAIBtn.textContent;
+				pauseAIBtn.textContent = '暂停中...';
+				
+				const result = await toggleAI('pause', true);
+				
+				if (result && result.success) {
+					console.log('✅ AI识别已暂停');
+					updateAIControlButtons('paused');
+					if (typeof showToast === 'function') {
+						showToast('AI识别已暂停', 'success');
+					}
+				} else {
+					console.error('❌ 暂停AI识别失败:', result);
+					if (typeof showToast === 'function') {
+						showToast('暂停AI识别失败：' + (result?.message || '未知错误'), 'error');
+					}
+				}
+			} catch (error) {
+				console.error('❌ 暂停AI识别失败:', error);
+				if (typeof showToast === 'function') {
+					showToast('暂停AI识别失败：' + error.message, 'error');
+				}
+			} finally {
+				// 恢复按钮状态
+				pauseAIBtn.disabled = false;
+				pauseAIBtn.textContent = originalText;
 			}
 		});
 	}
@@ -232,9 +280,37 @@ function initAIEvents() {
 	const resumeAIBtn = document.getElementById('resume-ai-btn');
 	if (resumeAIBtn) {
 		resumeAIBtn.addEventListener('click', async () => {
-			const result = await toggleAI('resume', true);
-			if (result) {
-				updateAIControlButtons('running');
+			try {
+				console.log('▶️ 恢复AI识别...');
+				
+				// 禁用按钮，防止重复点击
+				resumeAIBtn.disabled = true;
+				const originalText = resumeAIBtn.textContent;
+				resumeAIBtn.textContent = '恢复中...';
+				
+				const result = await toggleAI('resume', true);
+				
+				if (result && result.success) {
+					console.log('✅ AI识别已恢复');
+					updateAIControlButtons('running');
+					if (typeof showToast === 'function') {
+						showToast('AI识别已恢复', 'success');
+					}
+				} else {
+					console.error('❌ 恢复AI识别失败:', result);
+					if (typeof showToast === 'function') {
+						showToast('恢复AI识别失败：' + (result?.message || '未知错误'), 'error');
+					}
+				}
+			} catch (error) {
+				console.error('❌ 恢复AI识别失败:', error);
+				if (typeof showToast === 'function') {
+					showToast('恢复AI识别失败：' + error.message, 'error');
+				}
+			} finally {
+				// 恢复按钮状态
+				resumeAIBtn.disabled = false;
+				resumeAIBtn.textContent = originalText;
 			}
 		});
 	}

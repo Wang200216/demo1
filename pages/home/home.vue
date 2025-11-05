@@ -73,7 +73,7 @@
 				
 				<view class="live-video">
 					<!-- #ifdef MP-WEIXIN -->
-					<!-- 临时使用原生 video 组件避开 live-player 权限问题 -->
+					<!-- 使用原生 video 组件播放直播流 -->
 					<video
 						v-if="isLiveStarted && liveStreamUrl"
 						:key="liveStreamUrl"
@@ -90,38 +90,6 @@
 						@error="handleVideoError">
 					</video>
 
-					<!-- 调试信息显示区域 -->
-					<view class="debug-info" v-if="liveStreamUrl">
-						<view class="debug-item">
-							<text class="debug-label">流地址:</text>
-							<text class="debug-value">{{ liveStreamUrl }}</text>
-						</view>
-						<view class="debug-item">
-							<text class="debug-label">播放模式:</text>
-							<text class="debug-value">{{ getPlayerMode() }}</text>
-						</view>
-						<view class="debug-item">
-							<text class="debug-label">播放状态:</text>
-							<text class="debug-value">{{ isLiveStarted ? '✅ 播放中' : '❌ 未开始' }}</text>
-						</view>
-						<view class="debug-item">
-							<text class="debug-label">流格式:</text>
-							<text class="debug-value">{{ liveStreamUrl.includes('.flv') ? 'FLV' : liveStreamUrl.includes('.m3u8') ? 'HLS' : '其他' }}</text>
-						</view>
-					</view>
-
-					<!-- 调试按钮 -->
-					<view class="debug-buttons" v-if="liveStreamUrl">
-						<view class="debug-btn" @click="verifyStreamAccessibility()">
-							<text>🔍 测试流访问</text>
-						</view>
-						<view class="debug-btn" @click="forceRestartPlayer()">
-							<text>🔄 强制重启播放器</text>
-						</view>
-						<view class="debug-btn" @click="logPlayerStatus()">
-							<text>📊 输出播放器状态</text>
-						</view>
-					</view>
 					<!-- HLS 连接状态指示器 -->
 					<view class="hls-status-indicator" v-if="hlsStatus.show">
 						<text class="hls-status-text" :class="hlsStatus.type">{{ hlsStatus.message }}</text>
@@ -1009,83 +977,6 @@
 				return 'RTC'; // 默认使用 RTC 模式（更兼容）
 			},
 
-			/**
-			 * 验证直播流是否可访问（关键调试功能）
-			 */
-			async verifyStreamAccessibility() {
-				if (!this.liveStreamUrl) {
-					console.log('⚠️ 没有直播流地址');
-					return false;
-				}
-
-				console.log(`🔍 [验证直播流] 正在检查流地址: ${this.liveStreamUrl}`);
-
-				// 检查是否是 FLV 格式
-				if (this.liveStreamUrl.includes('.flv')) {
-					// FLV 流检查方法
-					try {
-						// 使用 API 服务检查流状态
-						const response = await uni.request({
-							url: this.liveStreamUrl,
-							method: 'HEAD', // 只检查头部，不下载整个文件
-							timeout: 5000
-						});
-
-						console.log(`🔍 [验证结果] FLV 流访问状态: ${response.statusCode}`);
-						if (response.statusCode === 200) {
-							console.log('✅ [验证成功] FLV 流地址可访问');
-							return true;
-						} else {
-							console.log(`⚠️ [验证失败] FLV 流返回状态码: ${response.statusCode}`);
-							return false;
-						}
-					} catch (error) {
-						console.log(`❌ [验证失败] FLV 流无法访问:`, error);
-						return false;
-					}
-				}
-
-				return true; // 其他格式暂不验证
-			},
-
-			/**
-			 * 强制重启播放器
-			 */
-			forceRestartPlayer() {
-				console.log('🔄 [强制重启] 开始重启播放器...');
-
-				// 1. 停止播放
-				this.isLiveStarted = false;
-
-				// 2. 清空流地址
-				const oldUrl = this.liveStreamUrl;
-				this.liveStreamUrl = '';
-
-				// 3. 等待DOM更新
-				setTimeout(() => {
-					// 4. 重新设置流地址
-					this.liveStreamUrl = oldUrl;
-					this.isLiveStarted = true;
-					console.log('✅ [强制重启] 播放器重启完成');
-					console.log('📺 [流地址]', this.liveStreamUrl);
-				}, 1000);
-			},
-
-			/**
-			 * 输出播放器状态
-			 */
-			logPlayerStatus() {
-				console.log('📊 [播放器状态检查]');
-				console.log('====================');
-				console.log('流地址:', this.liveStreamUrl);
-				console.log('播放模式:', this.getPlayerMode());
-				console.log('是否已开始:', this.isLiveStarted);
-				console.log('是否静音:', this.isMuted);
-				console.log('缓冲最小时间:', this.getPlayerMinCache());
-				console.log('缓冲最大时间:', this.getPlayerMaxCache());
-				console.log('播放器条件:', this.isLiveStarted && this.liveStreamUrl ? '✅ 满足' : '❌ 不满足');
-				console.log('====================');
-			},
 
 			/**
 			 * 根据流格式获取最小缓冲时间
@@ -1241,18 +1132,6 @@
 								播放器条件: this.isLiveStarted && this.liveStreamUrl ? '✅ 满足' : '❌ 不满足'
 							});
 							
-							uni.showToast({
-								title: '已自动转换为HLS格式',
-								icon: 'success',
-								duration: 2000
-							});
-							
-							// 验证直播流是否可访问
-							const isStreamAccessible = await this.verifyStreamAccessibility();
-							if (!isStreamAccessible) {
-								console.warn('⚠️ 直播流地址不可访问，可能导致播放失败');
-							}
-
 							// 如果直播未开始，但已有流地址，尝试开始播放
 							if (!this.isLiveStarted && this.liveStreamUrl) {
 								console.log('💡 流地址已设置，但直播未开始，尝试开始播放...');
@@ -3589,7 +3468,7 @@
 							// 尝试通过其他方式获取，或者使用备用方案
 							await this.fetchActiveStreamFromServerAlternative();
 						} catch (altError) {
-							console.warn('⚠️ 备用方案也失败，将使用配置文件的测试流');
+							console.warn('⚠️ 备用方案也失败，无法获取直播流地址');
 						}
 					}
 					// 继续使用备用地址
@@ -4247,7 +4126,7 @@
 					await this.setLiveStreamUrlWithHls(data.streamUrl, data.streamName);
 					// 如果当前没有开始直播，但收到了流地址，可以考虑自动开始（用于测试）
 					if (!this.isLiveStarted) {
-						console.log('💡 收到流地址但直播未开始，可以通过点击播放按钮观看测试流');
+						console.log('💡 收到流地址但直播未开始');
 					}
 				}
 			}
@@ -8875,56 +8754,5 @@
 		}
 	}
 
-	/* 调试信息样式 */
-	.debug-info {
-		position: absolute;
-		top: 10px;
-		left: 10px;
-		background: rgba(0, 0, 0, 0.8);
-		color: white;
-		padding: 10px;
-		border-radius: 8px;
-		font-size: 12px;
-		z-index: 1000;
-		max-width: 300px;
-	}
-
-	.debug-item {
-		margin-bottom: 5px;
-		display: flex;
-		align-items: center;
-	}
-
-	.debug-label {
-		font-weight: bold;
-		min-width: 60px;
-		margin-right: 10px;
-	}
-
-	.debug-value {
-		flex: 1;
-		word-break: break-all;
-		color: #00ff00;
-	}
-
-	.debug-buttons {
-		position: absolute;
-		bottom: 10px;
-		right: 10px;
-		z-index: 1001;
-	}
-
-	.debug-btn {
-		background: rgba(0, 123, 255, 0.8);
-		color: white;
-		padding: 5px 10px;
-		border-radius: 5px;
-		font-size: 12px;
-		margin: 2px;
-		cursor: pointer;
-	}
-
-	.debug-btn:active {
-		background: rgba(0, 86, 179, 0.8);
 	}
 </style>
