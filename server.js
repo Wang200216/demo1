@@ -980,6 +980,7 @@ app.get('/api/v1/admin/ai-content/list', (req, res) => {
 		const pageSize = parseInt(req.query.pageSize) || 20;
 		const startTime = req.query.startTime || null;
 		const endTime = req.query.endTime || null;
+		const streamId = req.query.stream_id || null; // 🔧 添加 stream_id 参数支持
 		
 		// 验证pageSize最大值
 		if (pageSize > 100) {
@@ -991,6 +992,16 @@ app.get('/api/v1/admin/ai-content/list', (req, res) => {
 		
 		// 从 aiDebateContent 数组中获取数据
 		let filteredContent = [...aiDebateContent];
+		
+		// 🔧 按 stream_id 过滤（如果提供）
+		if (streamId) {
+			filteredContent = filteredContent.filter(item => {
+				// 如果内容有 streamId 字段，必须匹配
+				// 如果内容没有 streamId 字段（旧数据），则不过滤（兼容旧数据）
+				return !item.streamId || item.streamId === streamId;
+			});
+			console.log(`📊 按 stream_id=${streamId} 过滤后，剩余 ${filteredContent.length} 条数据`);
+		}
 		
 		// 按时间过滤（如果有提供）
 		if (startTime) {
@@ -1074,9 +1085,19 @@ app.get('/api/admin/ai-content/list', (req, res) => {
 		const pageSize = parseInt(req.query.pageSize) || 20;
 		const startTime = req.query.startTime || null;
 		const endTime = req.query.endTime || null;
+		const streamId = req.query.stream_id || null; // 🔧 添加 stream_id 参数支持
 		
 		// 从 aiDebateContent 数组中获取数据
 		let filteredContent = [...aiDebateContent];
+		
+		// 🔧 按 stream_id 过滤（如果提供）
+		if (streamId) {
+			filteredContent = filteredContent.filter(item => {
+				// 如果内容有 streamId 字段，必须匹配
+				// 如果内容没有 streamId 字段（旧数据），则不过滤（兼容旧数据）
+				return !item.streamId || item.streamId === streamId;
+			});
+		}
 		
 		// 按时间过滤（如果有提供）
 		if (startTime) {
@@ -1449,7 +1470,7 @@ app.delete('/api/v1/admin/ai-content/:id/comments/:commentId', (req, res) => {
 
 app.post('/api/admin/ai-content', (req, res) => {
 	try {
-		const { text, side, debate_id } = req.body;
+		const { text, side, debate_id, streamId } = req.body;
 		
 		if (!text || !side) {
 			return res.status(400).json({ error: '缺少必要参数: text, side' });
@@ -1466,7 +1487,8 @@ app.post('/api/admin/ai-content', (req, res) => {
 			side: side,
 			timestamp: new Date().getTime(),
 			comments: [],
-			likes: 0
+			likes: 0,
+			streamId: streamId || globalLiveStatus.streamId || null // 🔧 添加 streamId 字段
 		};
 		
 		aiDebateContent.push(newContent);
@@ -1790,11 +1812,12 @@ function simulateNewAIContent() {
             side: randomContent.side,
             timestamp: new Date().getTime(),
             comments: [],
-            likes: Math.floor(Math.random() * 20) + 10
+            likes: Math.floor(Math.random() * 20) + 10,
+            streamId: globalLiveStatus.streamId || null // 🔧 添加 streamId 字段
         };
         
         aiDebateContent.push(newContent);
-        console.log(`新增AI内容: ${newContent.text}`);
+        console.log(`新增AI内容: ${newContent.text} (streamId: ${newContent.streamId})`);
     }, 15000); // 每15秒添加新内容
 }
 
