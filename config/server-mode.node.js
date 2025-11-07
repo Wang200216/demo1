@@ -1,14 +1,16 @@
 // config/server-mode.node.js (Node.js后端专用)
 const USE_MOCK_SERVER = false; // 改为 false 使用真实服务器
 const LOCAL_SERVER_URL = 'http://localhost:8080';
-const REAL_SERVER_URL = 'http://192.168.31.249:8081'; // 中间层服务器地址（直接连接，不使用 nginx）
-const REAL_SERVER_PORT = 8081; // 中间层服务器端口（避免与 nginx 冲突）
+// 部署服务器配置：使用环境变量或默认端口
+const DEPLOY_PORT = process.env.PORT || 8081; // 部署端口，可通过环境变量覆盖（改为8081）
+const REAL_SERVER_URL = `http://192.140.160.119:${DEPLOY_PORT}`; // 部署服务器地址
+const REAL_SERVER_PORT = DEPLOY_PORT; // 部署服务器端口
 // 后端服务器配置（真正的后端服务器地址）
-const BACKEND_SERVER_URL = 'http://192.168.31.189:8000'; // 后端服务器地址
+const BACKEND_SERVER_URL = 'http://192.140.160.119:8000'; // 后端服务器地址
 // 是否优先使用后端服务器（设为 true 时，所有 API 请求会优先代理到后端服务器）
 // 注意：后台管理系统通过中间层代理访问后端服务器
-// 🔧 修复：改为 false，让中间层直接处理请求，避免状态不同步
-const PRIORITIZE_BACKEND_SERVER = false; // 设为 true 优先使用后端服务器，false 优先使用本地路由
+// 🔧 强制使用真实服务器：设为 true，所有 API 请求直接代理到后端服务器，不使用本地mock数据
+const PRIORITIZE_BACKEND_SERVER = true; // 设为 true 优先使用后端服务器，false 优先使用本地路由
 const REAL_WECHAT_CONFIG = {
     appid: 'wx94289b0d2ca7a802',
     secret: '10409c1193a326a7b328f675b1776195'
@@ -33,11 +35,11 @@ const getCurrentServerConfig = () => {
             }
         };
     } else {
-        // 使用真实服务器，直接连接中间层（不使用 nginx）
+        // 使用真实服务器，部署模式
         return {
             mode: 'real',
             url: REAL_SERVER_URL,
-            port: REAL_SERVER_PORT,  // 使用8080端口，与前端配置保持一致
+            port: DEPLOY_PORT,  // 使用部署端口（8082）
             wechat: {
                 useMock: false,
                 appid: REAL_WECHAT_CONFIG.appid,

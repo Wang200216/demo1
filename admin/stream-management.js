@@ -333,6 +333,16 @@ function closeStreamModal() {
  */
 async function handleStreamFormSubmit(e) {
 	e.preventDefault();
+	e.stopPropagation(); // 阻止事件冒泡，防止重复触发
+	
+	// 🔧 修复：防重复提交 - 如果正在提交，直接返回
+	if (window.streamFormSubmitting) {
+		console.log('⚠️ 表单正在提交中，忽略重复提交');
+		return;
+	}
+	
+	// 标记为正在提交
+	window.streamFormSubmitting = true;
 	
 	try {
 		const streamId = document.getElementById('stream-id').value;
@@ -347,6 +357,7 @@ async function handleStreamFormSubmit(e) {
 		// 验证
 		if (!streamData.name || !streamData.url || !streamData.type) {
 			showToast('请填写所有必填项', 'error');
+			window.streamFormSubmitting = false; // 🔧 修复：验证失败时也要清除提交标记
 			return;
 		}
 		
@@ -381,11 +392,15 @@ async function handleStreamFormSubmit(e) {
 			// 恢复按钮
 			if (submitBtn) submitBtn.disabled = false;
 			if (btnText) btnText.textContent = '保存';
+			// 🔧 修复：清除提交标记
+			window.streamFormSubmitting = false;
 		}
 		
 	} catch (error) {
 		console.error('❌ 保存直播流失败:', error);
 		showToast('保存失败：' + error.message, 'error');
+		// 🔧 修复：出错时也要清除提交标记
+		window.streamFormSubmitting = false;
 	}
 }
 
@@ -752,6 +767,11 @@ function showToast(message, type = 'info') {
 		}, 300);
 	}, 3000);
 }
+
+// 将函数暴露到全局作用域，供其他脚本调用
+window.openEditStreamModal = openEditStreamModal;
+window.openAddStreamModal = openAddStreamModal;
+window.handleDeleteStream = handleDeleteStream;
 
 console.log('✅ 直播流管理模块加载完成');
 

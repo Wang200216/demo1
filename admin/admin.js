@@ -6,7 +6,7 @@ const SERVER_CONFIG = {
 	// 中间层服务器地址（支持 WebSocket 和状态同步）
 	MIDDLEWARE_URL: 'http://192.168.31.249:8081',
 	// 后端服务器地址（真实服务器，直接访问）
-	BACKEND_URL: 'http://192.168.31.189:8000',
+	BACKEND_URL: 'http://192.140.160.119:8000',
 	// WebSocket 服务器地址（如果后端服务器没有WebSocket，使用中间层）
 	WS_URL: 'http://192.168.31.249:8081', // WebSocket 连接到中间层
 	// 当前使用的地址（修改这里切换服务器）
@@ -801,77 +801,78 @@ function createStreamCard(stream) {
 }
 
 // 添加/编辑直播流
-document.getElementById('add-stream-btn')?.addEventListener('click', () => {
-	openStreamModal();
-});
+// 🔧 修复：移除重复的事件监听器，这些功能已由 stream-management.js 模块处理
+// 避免表单提交时触发两次请求
+// document.getElementById('add-stream-btn')?.addEventListener('click', () => {
+// 	openStreamModal();
+// });
 
-document.getElementById('stream-form')?.addEventListener('submit', async (e) => {
-	e.preventDefault();
-	
-	const streamData = {
-		id: document.getElementById('stream-id').value || undefined,
-		name: document.getElementById('stream-name').value,
-		url: document.getElementById('stream-url').value,
-		type: document.getElementById('stream-type').value,
-		enabled: document.getElementById('stream-enabled').checked
-	};
-	
-	try {
-		const url = streamData.id 
-			? `${API_BASE}/streams/${streamData.id}`
-			: `${API_BASE}/streams`;
-		
-		const method = streamData.id ? 'PUT' : 'POST';
-		
-		const response = await fetch(url, {
-			method,
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(streamData)
-		});
-		
-		if (response.ok) {
-			showNotification('保存成功', 'success');
-			closeStreamModal();
-			loadStreams();
-		} else {
-			throw new Error('保存失败');
-		}
-	} catch (error) {
-		console.error('保存失败:', error);
-		showNotification('保存失败', 'error');
-	}
-});
+// document.getElementById('stream-form')?.addEventListener('submit', async (e) => {
+// 	e.preventDefault();
+// 	
+// 	const streamData = {
+// 		id: document.getElementById('stream-id').value || undefined,
+// 		name: document.getElementById('stream-name').value,
+// 		url: document.getElementById('stream-url').value,
+// 		type: document.getElementById('stream-type').value,
+// 		enabled: document.getElementById('stream-enabled').checked
+// 	};
+// 	
+// 	try {
+// 		const url = streamData.id 
+// 			? `${API_BASE}/streams/${streamData.id}`
+// 			: `${API_BASE}/streams`;
+// 		
+// 		const method = streamData.id ? 'PUT' : 'POST';
+// 		
+// 		const response = await fetch(url, {
+// 			method,
+// 			headers: { 'Content-Type': 'application/json' },
+// 			body: JSON.stringify(streamData)
+// 		});
+// 		
+// 		if (response.ok) {
+// 			showNotification('保存成功', 'success');
+// 			closeStreamModal();
+// 			loadStreams();
+// 		} else {
+// 			throw new Error('保存失败');
+// 		}
+// 	} catch (error) {
+// 		console.error('保存失败:', error);
+// 		showNotification('保存失败', 'error');
+// 	}
+// });
 
-function openStreamModal(stream = null) {
-	const modal = document.getElementById('stream-modal');
-	if (stream) {
-		document.getElementById('stream-id').value = stream.id;
-		document.getElementById('stream-name').value = stream.name;
-		document.getElementById('stream-url').value = stream.url;
-		document.getElementById('stream-type').value = stream.type;
-		document.getElementById('stream-enabled').checked = stream.enabled;
-	} else {
-		document.getElementById('stream-form').reset();
-		document.getElementById('stream-id').value = '';
-	}
-	modal.classList.add('show');
-}
+// function openStreamModal(stream = null) {
+// 	const modal = document.getElementById('stream-modal');
+// 	if (stream) {
+// 		document.getElementById('stream-id').value = stream.id;
+// 		document.getElementById('stream-name').value = stream.name;
+// 		document.getElementById('stream-url').value = stream.url;
+// 		document.getElementById('stream-type').value = stream.type;
+// 		document.getElementById('stream-enabled').checked = stream.enabled;
+// 	} else {
+// 		document.getElementById('stream-form').reset();
+// 		document.getElementById('stream-id').value = '';
+// 	}
+// 	modal.classList.add('show');
+// }
 
-function closeStreamModal() {
-	document.getElementById('stream-modal').classList.remove('show');
-}
+// function closeStreamModal() {
+// 	document.getElementById('stream-modal').classList.remove('show');
+// }
 
-document.querySelector('.modal-close')?.addEventListener('click', closeStreamModal);
-document.getElementById('cancel-stream-btn')?.addEventListener('click', closeStreamModal);
+// document.querySelector('.modal-close')?.addEventListener('click', closeStreamModal);
+// document.getElementById('cancel-stream-btn')?.addEventListener('click', closeStreamModal);
 
 async function editStream(id) {
-	try {
-		const response = await fetch(`${API_BASE}/streams/${id}`);
-		const stream = await response.json();
-		openStreamModal(stream);
-	} catch (error) {
-		console.error('加载直播流失败:', error);
-		showNotification('加载失败', 'error');
+	// 🔧 修复：使用 stream-management.js 中的函数
+	if (typeof openEditStreamModal === 'function') {
+		openEditStreamModal(id);
+	} else {
+		console.error('openEditStreamModal 函数未定义，请确保 stream-management.js 已加载');
+		showNotification('编辑功能不可用，请刷新页面重试', 'error');
 	}
 }
 

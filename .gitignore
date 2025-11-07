@@ -30,6 +30,8 @@ coverage/
 *.zip
 *.rar
 *.7z
+*.tar.gz
+deploy.tar.gz
 
 # IDE / 编辑器配置
 .idea/
@@ -51,3 +53,8 @@ server.log
 project.private.config.json
 ngrok-config.json
 ngrok.yml
+
+# PM2日志
+logs/
+*.log
+pm2-*.log

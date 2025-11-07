@@ -3,5 +3,6 @@
   "scheduledEndTime": null,
   "streamId": null,
   "debateId": null,
-  "isScheduled": false
+  "isScheduled": false,
+  "updatedAt": "2025-11-05T06:47:26.368Z"
 }

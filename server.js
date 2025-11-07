@@ -193,6 +193,9 @@ app.get('/admin', (req, res) => {
 
 // 提供后台管理静态资源
 app.use('/admin', express.static(path.join(__dirname, 'admin')));
+
+// 提供静态资源（图标、动画等）
+app.use('/static', express.static(path.join(__dirname, 'static')));
 // ==================== 后台管理路由结束 ====================
 
 // ==================== 优先代理到后端服务器（如果启用） ====================
