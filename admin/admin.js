@@ -55,9 +55,23 @@ let ws = null;
 let wsReconnectTimer = null;
 
 // 页面导航
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 	initNavigation();
+	
+	// 🔧 修复：先加载流列表，再加载 Dashboard（因为后端现在要求必须传递 stream_id）
+	// 先尝试加载流列表（如果流选择器存在）
+	const streamSelect = document.getElementById('stream-select');
+	if (streamSelect) {
+		try {
+			await loadStreamsToSelect();
+		} catch (error) {
+			console.warn('⚠️ 加载流列表失败，继续加载 Dashboard:', error);
+		}
+	}
+	
+	// 然后加载 Dashboard（此时应该已经有流ID了）
 	loadDashboard();
+	
 	initWebSocket();
 	// 仍然保留定时更新作为后备（如果 WebSocket 断开）
 	setInterval(updateDashboard, 10000); // 每10秒更新一次数据作为后备
@@ -635,8 +649,37 @@ function loadPageData(page) {
 // ==================== 数据概览 ====================
 async function loadDashboard() {
 	try {
-		const data = await fetchDashboard();
-		if (!data) return;
+		// 🔧 修复：根据选择的流加载对应的 Dashboard 数据
+		const streamSelect = document.getElementById('stream-select');
+		const selectedStreamId = streamSelect?.value;
+		
+		// 🔧 修复：统一使用 fetchDashboard，它会自动处理 streamId
+		// fetchDashboard 现在会尝试从流选择器或流列表获取 streamId
+		console.log(`📊 加载 Dashboard 数据...`, selectedStreamId ? `流: ${selectedStreamId}` : '使用默认流');
+		const result = await fetchDashboard(selectedStreamId);
+		
+		// 处理返回格式：可能是 {success, data} 或直接是数据
+		let data;
+		if (result && result.success === false) {
+			console.error('❌ Dashboard 加载失败:', result.message);
+			// 显示错误提示
+			const errorMsg = result.message || '加载 Dashboard 失败';
+			if (typeof showNotification === 'function') {
+				showNotification(errorMsg, 'error');
+			}
+			return;
+		} else if (result && result.data) {
+			// {success: true, data: {...}} 格式
+			data = result.data;
+		} else {
+			// 直接返回数据格式
+			data = result;
+		}
+		
+		if (!data) {
+			console.warn('⚠️ Dashboard 数据为空');
+			return;
+		}
 		
 		// 更新直播状态
 		if (data.isLive !== undefined) {
@@ -899,7 +942,9 @@ let currentLiveStatus = false;
 // 加载当前直播状态
 async function loadLiveStatus() {
 	try {
-		const data = await fetchDashboard();
+		const result = await fetchDashboard();
+		// 处理返回格式
+		const data = result?.data || result;
 		if (data && data.isLive !== undefined) {
 			currentLiveStatus = data.isLive;
 			updateLiveControlButton(data.isLive);
@@ -934,7 +979,9 @@ async function loadLiveSetup() {
 		await loadStreamsToSelect();
 		
 		// 2. 加载当前直播状态
-		const data = await fetchDashboard();
+		const result = await fetchDashboard();
+		// 处理返回格式
+		const data = result?.data || result;
 		if (data) {
 			// 优先使用全局状态（如果存在且不一致，说明可能是刚操作后的状态）
 			// 如果全局状态明确为 false，即使 dashboard 返回 true，也使用全局状态
@@ -1319,6 +1366,9 @@ async function loadStreamsToSelect() {
 		if (activeStream && streamSelect) {
 			streamSelect.value = activeStream.id;
 			updateSelectedStreamInfo(activeStream);
+			// 🔧 修复：默认选择流后，重新加载该流的 Dashboard 数据
+			console.log(`🔄 默认选择流 ${activeStream.id}，重新加载 Dashboard...`);
+			loadDashboard();
 		}
 		
 		// 移除旧的监听器，避免重复绑定
@@ -1334,18 +1384,30 @@ async function loadStreamsToSelect() {
 			
 			oldStreamSelect.parentNode.replaceChild(newStreamSelect, oldStreamSelect);
 			
+			// 🔧 修复：如果新节点有选中的流，重新加载该流的 Dashboard
+			if (activeStream && newStreamSelect.value === activeStream.id) {
+				console.log(`🔄 替换节点后，重新加载流 ${activeStream.id} 的 Dashboard...`);
+				loadDashboard();
+			}
+			
 			// 监听选择变化
-			newStreamSelect.addEventListener('change', (e) => {
+			newStreamSelect.addEventListener('change', async (e) => {
 				const selectedId = e.target.value;
 				if (selectedId) {
 					const selectedStream = streams.find(s => s.id === selectedId);
 					if (selectedStream) {
 						updateSelectedStreamInfo(selectedStream);
+						// 🔧 修复：选择流后重新加载 Dashboard，显示该流的票数
+						console.log(`🔄 切换到流 ${selectedId}，重新加载 Dashboard...`);
+						await loadDashboard();
 					} else {
 						hideSelectedStreamInfo();
 					}
 				} else {
 					hideSelectedStreamInfo();
+					// 🔧 修复：取消选择后重新加载默认 Dashboard
+					console.log('🔄 取消选择流，重新加载默认 Dashboard...');
+					await loadDashboard();
 				}
 			});
 		}
@@ -1913,8 +1975,23 @@ function viewUser(id) {
 // ==================== 票数管理 ====================
 async function loadVotes() {
 	try {
-		// 从dashboard获取票数信息
-		const data = await fetchDashboard();
+		// 🔧 修复：根据票数管理页面选择的流加载数据
+		const votesStreamSelect = document.getElementById('votes-stream-select');
+		const selectedStreamId = votesStreamSelect?.value;
+		
+		if (!selectedStreamId) {
+			// 如果没有选择流，显示提示
+			const container = document.getElementById('votes-container');
+			if (container) {
+				container.innerHTML = '<div style="color: #FF9800; padding: 40px 0; text-align: center;">请先选择要管理的直播流</div>';
+			}
+			return;
+		}
+		
+		// 从dashboard获取该流的票数信息
+		const result = await fetchDashboard(selectedStreamId);
+		// 处理返回格式
+		const data = result?.data || result;
 		if (!data) return;
 		
 		if (!data.isLive) {
@@ -2213,7 +2290,9 @@ document.querySelector('[data-modal="ai-content-modal"]')?.addEventListener('cli
 async function loadStatistics() {
 	try {
 		// 使用 dashboard 接口获取统计数据
-		const data = await fetchDashboard();
+		const result = await fetchDashboard();
+		// 处理返回格式
+		const data = result?.data || result;
 		if (!data) {
 			console.error('获取统计数据失败');
 			return;

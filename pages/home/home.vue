@@ -852,7 +852,8 @@
 								// 未指定 streamId，使用默认逻辑
 								// 优先使用 dashboard 接口
 							try {
-								const dashboardData = await service.getDashboard();
+								// 🔧 修复：始终传递 streamId，确保获取该流的独立数据
+								const dashboardData = await service.getDashboard(this.streamId);
 								if (dashboardData) {
 									// 优先使用正在使用的流地址，否则使用启用的流地址
 									const streamUrl = dashboardData.liveStreamUrl || dashboardData.activeStreamUrl;
@@ -1253,27 +1254,14 @@
 							});
 							// 只有在streamId匹配时才更新（首次加载时总是更新）
 							if (!this.streamId || !responseStreamId || responseStreamId === this.streamId) {
-								// 首次加载时直接更新，或者当前票数为0时更新
-								if (this.topLeftVotes === 0 && this.topRightVotes === 0) {
-									this.topLeftVotes = dashboardData.leftVotes || 0;
-									this.topRightVotes = dashboardData.rightVotes || 0;
-									console.log('✅ 从Dashboard更新票数成功（首次加载）:', {
-										left: this.topLeftVotes,
-										right: this.topRightVotes
-									});
-								} else {
-									// 如果不是首次加载，只有当Dashboard的票数大于0时才更新
-									const dashboardTotal = (dashboardData.leftVotes || 0) + (dashboardData.rightVotes || 0);
-									const currentTotal = this.topLeftVotes + this.topRightVotes;
-									if (dashboardTotal > currentTotal || dashboardTotal >= currentTotal) {
-										this.topLeftVotes = dashboardData.leftVotes || 0;
-										this.topRightVotes = dashboardData.rightVotes || 0;
-										console.log('✅ 从Dashboard更新票数成功:', {
-											left: this.topLeftVotes,
-											right: this.topRightVotes
-										});
-									}
-								}
+								// 🔧 修复：始终使用数据库返回的票数，这是真实数据
+								this.topLeftVotes = dashboardData.leftVotes || 0;
+								this.topRightVotes = dashboardData.rightVotes || 0;
+								console.log('✅ 从Dashboard更新票数成功:', {
+									left: this.topLeftVotes,
+									right: this.topRightVotes,
+									streamId: responseStreamId
+								});
 							}
 						}
 						
@@ -1462,7 +1450,8 @@
 					
 					// 优先使用 dashboard 接口（已包含 activeStreamUrl）
 					try {
-						const dashboardData = await service.getDashboard();
+						// 🔧 修复：传递 streamId，确保获取该流的独立数据
+						const dashboardData = await service.getDashboard(this.streamId);
 						if (dashboardData) {
 							// 优先使用正在使用的流地址，否则使用启用的流地址
 							const streamUrl = dashboardData.liveStreamUrl || dashboardData.activeStreamUrl;
@@ -2070,57 +2059,35 @@
 					// 调试日志：检查当前使用的服务器地址
 					console.log('📊 获取票数 - 使用服务器:', service.baseURL || service.getCurrentConfig?.()?.baseURL || '未设置');
 					
-					// 传递 streamId 参数（必需）
-					const response = await service.getVotes(this.streamId);
+					// 🔧 修复：使用 Dashboard API 获取票数（votes API 返回空数据）
+					const response = await service.getDashboard(this.streamId);
 					
-					console.log('📊 获取票数 - API响应:', response);
+					console.log('📊 获取票数 - Dashboard API响应:', response);
 					
-					if (response && response.success && response.data) {
-						const data = response.data;
+					if (response) {
+						// getDashboard 直接返回数据，不包装在 {success, data} 中
+						const data = response;
 						
-						// 🔧 保护逻辑：防止错误数据覆盖正确的票数
+						// 🔧 修复：始终使用数据库返回的票数，这是真实数据
 						if (data.leftVotes !== undefined && data.rightVotes !== undefined) {
 							const newLeftVotes = data.leftVotes || 0;
 							const newRightVotes = data.rightVotes || 0;
-							const currentTotal = this.topLeftVotes + this.topRightVotes;
 							const newTotal = newLeftVotes + newRightVotes;
 							
-							// 🔧 首次加载时（当前票数为0），直接更新（无论API返回什么值）
-							// 这样可以确保页面加载时能显示票数
-							if (currentTotal === 0) {
-								this.topLeftVotes = newLeftVotes;
-								this.topRightVotes = newRightVotes;
-								console.log('✅ 票数更新成功（首次加载）:', { 
-									left: this.topLeftVotes, 
-									right: this.topRightVotes,
-									total: newTotal,
-									streamId: this.streamId
-								});
-							} else {
-								// 非首次加载时，只有当以下情况之一时才更新：
-								// 1. 新的票数大于0（有有效数据）
-								// 2. 新的总票数大于等于当前总票数（避免被旧数据覆盖）
-								if (newTotal > 0 || newTotal >= currentTotal) {
-									this.topLeftVotes = newLeftVotes;
-									this.topRightVotes = newRightVotes;
-									console.log('✅ 票数更新成功:', { 
-										left: this.topLeftVotes, 
-										right: this.topRightVotes,
-										total: newTotal,
-										streamId: this.streamId
-									});
-								} else {
-									console.log('⚠️ 跳过更新：API返回的票数可能比当前票数少，可能是旧的缓存数据', {
-										当前: { left: this.topLeftVotes, right: this.topRightVotes, total: currentTotal },
-										API返回: { left: newLeftVotes, right: newRightVotes, total: newTotal }
-									});
-								}
-							}
+							// 直接更新为数据库的真实票数
+							this.topLeftVotes = newLeftVotes;
+							this.topRightVotes = newRightVotes;
+							console.log('✅ 票数更新成功（来自 Dashboard）:', { 
+								left: this.topLeftVotes, 
+								right: this.topRightVotes,
+								total: newTotal,
+								streamId: this.streamId
+							});
 						} else {
-							console.warn('⚠️ API返回的数据格式不正确:', data);
+							console.warn('⚠️ Dashboard API 未返回票数数据:', data);
 						}
 					} else {
-						console.warn('⚠️ 获取票数失败:', response);
+						console.warn('⚠️ 获取 Dashboard 失败');
 					}
 				} catch (error) {
 					console.error('❌ 获取票数失败:', error);
@@ -2550,7 +2517,8 @@
 					}
 					
 					console.log('🤖 正在获取Dashboard数据...');
-					const dashboardData = await service.getDashboard();
+					// 🔧 修复：传递 streamId，确保获取该流的独立数据
+					const dashboardData = await service.getDashboard(this.streamId);
 					
 					if (dashboardData) {
 						console.log('🤖 Dashboard数据:', dashboardData);
@@ -3622,7 +3590,8 @@
 					
 					// 优先使用 dashboard 接口获取直播状态
 					try {
-						const dashboardData = await service.getDashboard();
+						// 🔧 修复：传递 streamId，确保获取该流的独立数据
+						const dashboardData = await service.getDashboard(this.streamId);
 						
 						console.log('📡 Dashboard数据:', dashboardData);
 						

@@ -431,10 +431,63 @@ async function deleteAIContent(contentId, reason = '管理员删除', notifyUser
 
 /**
  * 获取数据概览
+ * @param {string|null} streamId - 直播流ID（可选，如果提供则查询该流，否则尝试获取默认流）
  * @returns {Promise<Object|null>}
  */
-async function fetchDashboard() {
-	return await apiRequest('/api/v1/admin/dashboard', {
+async function fetchDashboard(streamId = null) {
+	// 🔧 修复：后端现在要求必须传递 stream_id 参数
+	// 如果没有提供 streamId，尝试获取第一个可用的流ID
+	if (!streamId) {
+		try {
+			// 尝试从流选择器获取
+			const streamSelect = document.getElementById('stream-select');
+			if (streamSelect && streamSelect.value) {
+				streamId = streamSelect.value;
+				console.log(`📊 [fetchDashboard] 从流选择器获取 streamId: ${streamId}`);
+			}
+		} catch (error) {
+			console.warn('⚠️ [fetchDashboard] 无法从流选择器获取 streamId:', error);
+		}
+		
+		// 如果还是没有，尝试从流列表获取
+		if (!streamId && window.liveSetupStreams && window.liveSetupStreams.length > 0) {
+			const activeStream = window.liveSetupStreams.find(s => s.enabled === true);
+			if (activeStream) {
+				streamId = activeStream.id;
+				console.log(`📊 [fetchDashboard] 使用启用的流: ${streamId}`);
+			} else {
+				streamId = window.liveSetupStreams[0].id;
+				console.log(`📊 [fetchDashboard] 使用第一个流: ${streamId}`);
+			}
+		}
+		
+		// 如果还是没有，尝试从API获取流列表
+		if (!streamId) {
+			try {
+				const streamsResult = await getStreamsList();
+				const streams = streamsResult?.streams || streamsResult?.data || (Array.isArray(streamsResult) ? streamsResult : []);
+				if (streams && streams.length > 0) {
+					const activeStream = streams.find(s => s.enabled === true);
+					streamId = activeStream ? activeStream.id : streams[0].id;
+					console.log(`📊 [fetchDashboard] 从API获取流列表，使用流: ${streamId}`);
+				}
+			} catch (error) {
+				console.error('❌ [fetchDashboard] 获取流列表失败:', error);
+			}
+		}
+	}
+	
+	// 如果还是没有 streamId，返回错误
+	if (!streamId) {
+		console.error('❌ [fetchDashboard] 无法获取 streamId，后端要求必须传递 stream_id 参数');
+		return {
+			success: false,
+			message: '无法获取直播流ID，请先在"直播流管理"中添加直播流'
+		};
+	}
+	
+	// 🔧 修复：使用带 stream_id 参数的 API
+	return await apiRequest(`/api/v1/admin/dashboard?stream_id=${streamId}`, {
 		method: 'GET'
 	});
 }

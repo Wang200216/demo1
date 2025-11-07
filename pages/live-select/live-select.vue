@@ -221,37 +221,24 @@ export default {
 				
 				console.log(`${isCurrentlyLive ? '🟢' : '⚪'} 直播流 "${stream.name}" 状态: ${isCurrentlyLive ? '正在直播' : '未开播'}`);
 				
-				// 获取该直播流的投票数据（使用getVotes获取完整票数信息）
-				let votesData = null;
-				try {
-					const votesResponse = await apiService.getVotes(stream.id);
-					if (votesResponse && votesResponse.success && votesResponse.data) {
-						votesData = votesResponse.data;
-					}
-				} catch (error) {
-					console.warn('⚠️ 获取投票数据失败，尝试使用统计接口:', error);
-					// 如果getVotes失败，尝试使用getVotesStatistics作为备用
-					try {
-						votesData = await apiService.getVotesStatistics(stream.id);
-					} catch (statsError) {
-						console.warn('⚠️ 获取投票统计数据也失败:', statsError);
-					}
-				}
-				
-				// 🔧 如果Dashboard数据包含票数，优先使用Dashboard的数据（更实时）
-				if (dashboard && dashboard.leftVotes !== undefined && dashboard.rightVotes !== undefined) {
-					console.log('📊 Dashboard包含票数数据，使用Dashboard数据:', {
-						left: dashboard.leftVotes,
-						right: dashboard.rightVotes
-					});
-					votesData = {
-						leftVotes: dashboard.leftVotes,
-						rightVotes: dashboard.rightVotes,
-						totalVotes: dashboard.totalVotes || ((dashboard.leftVotes || 0) + (dashboard.rightVotes || 0)),
-						leftPercentage: dashboard.leftPercentage,
-						rightPercentage: dashboard.rightPercentage
-					};
-				}
+			// 🔧 修复：优先使用 Dashboard 的票数数据（votes API 返回空数据）
+			let votesData = null;
+			
+			// 如果Dashboard数据包含票数，直接使用（最准确）
+			if (dashboard && dashboard.leftVotes !== undefined && dashboard.rightVotes !== undefined) {
+				console.log('📊 使用 Dashboard 的票数数据:', {
+					left: dashboard.leftVotes,
+					right: dashboard.rightVotes,
+					total: dashboard.totalVotes
+				});
+				votesData = {
+					leftVotes: dashboard.leftVotes,
+					rightVotes: dashboard.rightVotes,
+					totalVotes: dashboard.totalVotes || ((dashboard.leftVotes || 0) + (dashboard.rightVotes || 0)),
+					leftPercentage: dashboard.leftPercentage,
+					rightPercentage: dashboard.rightPercentage
+				};
+			}
 				
 				// 获取辩题信息（传递当前流的ID）
 				const debateResponse = await apiService.getDebateTopic(stream.id);
