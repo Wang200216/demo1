@@ -461,7 +461,6 @@
 						<view class="comment-item" v-for="(comment, index) in selectedMessage.comments" :key="comment.id || index">
 							<view class="comment-header">
 								<view class="user-info">
-									<text class="user-avatar">{{ comment.avatar }}</text>
 									<text class="user-name">{{ comment.user }}</text>
 								</view>
 								<view class="comment-header-right">
@@ -7243,65 +7242,51 @@
 	}
 
 	.custom-modal {
-		background: linear-gradient(135deg, #fff9f5 0%, #ffeef0 100%);
-		border: 3rpx solid #ffb3d1;
-		border-radius: 28rpx;
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+		border: 6rpx solid #000000;
+		border-radius: 0;
 		width: 100%;
 		max-width: 640rpx;
 		max-height: 85vh;
 		overflow: hidden;
-		box-shadow: 0 8rpx 24rpx rgba(255, 179, 209, 0.3), 
-		            0 4rpx 12rpx rgba(255, 107, 157, 0.2),
-		            inset 0 1rpx 0 rgba(255, 255, 255, 0.6);
-		animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-		backdrop-filter: blur(10rpx);
+		box-shadow: 
+			12rpx 12rpx 0 #D9468F,
+			-12rpx -12rpx 0 #6BA3FF,
+			0 0 40rpx rgba(255, 217, 61, 0.4);
+		animation: slideUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+		transform: rotate(-1deg);
 	}
 
 	@keyframes slideUp {
 		from { 
 			opacity: 0;
-			transform: translateY(100rpx) scale(0.9);
+			transform: translateY(100rpx) scale(0.9) rotate(-1deg);
 		}
 		to { 
 			opacity: 1;
-			transform: translateY(0) scale(1);
+			transform: translateY(0) scale(1) rotate(-1deg);
 		}
 	}
 
 	.modal-header {
-		background: linear-gradient(135deg, #FF6B9D 0%, #FF1493 50%, #FFB6C1 100%);
+		background: linear-gradient(135deg, #D9468F 0%, #9B6ED8 100%);
 		padding: 32rpx 30rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		border-bottom: 2rpx solid rgba(255, 255, 255, 0.3);
+		border-bottom: 5rpx solid #000000;
 		position: relative;
 		overflow: hidden;
-		box-shadow: 0 4rpx 12rpx rgba(255, 107, 157, 0.3);
-	}
-	
-	.modal-header::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.15) 50%, transparent 70%);
-		animation: shimmer 3s infinite;
-	}
-	
-	@keyframes shimmer {
-		0% { transform: translateX(-100%); }
-		100% { transform: translateX(100%); }
+		box-shadow: 0 6rpx 0 #000000;
 	}
 
 	.modal-title {
 		font-size: 38rpx;
 		font-weight: 700;
 		color: #FFFFFF;
-		text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
-		letter-spacing: 0.5rpx;
+		text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+		letter-spacing: 1rpx;
+		text-transform: uppercase;
 		position: relative;
 		z-index: 1;
 	}
@@ -7310,30 +7295,32 @@
 	.modal-content {
 		max-height: 60vh;
 		padding: 30rpx 24rpx;
-		background: #fafafa;
+		background: #FFFFFF;
 		box-sizing: border-box;
 		width: 100%;
 	}
 
 	.summary-section {
 		margin-bottom: 28rpx;
-		background: #ffffff;
-		border: 2rpx solid #f0f0f0;
-		border-radius: 16rpx;
-		padding: 20rpx;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+		background: linear-gradient(135deg, #FFD93D 0%, #D9468F 100%);
+		border: 5rpx solid #000000;
+		border-radius: 0;
+		padding: 24rpx;
+		box-shadow: 6rpx 6rpx 0 #000000;
 		box-sizing: border-box;
 		width: 100%;
+		transform: rotate(1deg);
 	}
 
 	.comments-section {
 		margin-bottom: 0;
-		background: #ffffff;
-		border: 2rpx solid #f0f0f0;
-		border-radius: 16rpx;
-		padding: 20rpx;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06);
+		background: #FFFFFF;
+		border: 5rpx solid #000000;
+		border-radius: 0;
+		padding: 24rpx;
+		box-shadow: 6rpx 6rpx 0 #000000;
 		box-sizing: border-box;
+		transform: rotate(-1deg);
 	}
 
 	.section-title {
@@ -7341,7 +7328,16 @@
 		align-items: center;
 		margin-bottom: 16rpx;
 		padding-bottom: 12rpx;
-		border-bottom: 1rpx solid #e5e5e5;
+		border-bottom: 4rpx solid #000000;
+	}
+
+	.comments-section .section-title {
+		border-bottom: 4rpx solid #000000;
+	}
+
+	.comments-section .title-text {
+		color: #000000;
+		text-shadow: none;
 	}
 
 	.title-icon-img {
@@ -7352,26 +7348,30 @@
 
 	.title-text {
 		font-size: 28rpx;
-		font-weight: 600;
-		color: #333;
-		letter-spacing: 0.2rpx;
+		font-weight: 700;
+		color: #FFFFFF;
+		letter-spacing: 0.5rpx;
+		text-transform: uppercase;
+		text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 	}
 
 	.summary-content {
-		background: #f8f9fa;
-		border: 1rpx solid #e0e0e0;
-		border-radius: 12rpx;
-		padding: 18rpx;
+		background: rgba(255, 255, 255, 0.9);
+		border: 4rpx solid #000000;
+		border-radius: 0;
+		padding: 20rpx;
 		position: relative;
+		box-shadow: 4rpx 4rpx 0 #000000;
+		margin-top: 16rpx;
 	}
 
 	.summary-text {
 		font-size: 28rpx;
 		line-height: 1.6;
-		color: #333;
+		color: #000000;
 		display: block;
-		font-weight: 400;
-		letter-spacing: 0.2rpx;
+		font-weight: 500;
+		letter-spacing: 0.5rpx;
 	}
 
 	.comments-list {
@@ -7383,37 +7383,29 @@
 	}
 
 	.comment-item {
-		background: #f9f9f9;
-		border: 1rpx solid #e5e5e5;
-		border-radius: 12rpx;
-		padding: 18rpx;
+		background: #FFFFFF;
+		border: 4rpx solid #000000;
+		border-radius: 0;
+		padding: 20rpx;
 		transition: all 0.2s ease;
 		position: relative;
-		overflow: hidden;
+		overflow: visible;
 		box-sizing: border-box;
 		width: 100%;
 		max-width: 100%;
+		box-shadow: 4rpx 4rpx 0 #000000;
+		margin-bottom: 16rpx;
+		transform: rotate(-0.5deg);
 	}
 
-	.comment-item::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 3rpx;
-		height: 100%;
-		background: #667eea;
-		opacity: 0;
-		transition: opacity 0.2s ease;
+	.comment-item:nth-child(even) {
+		transform: rotate(0.5deg);
+		box-shadow: -4rpx 4rpx 0 #000000;
 	}
 
-	.comment-item:hover {
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
-		border-color: #d0d0d0;
-	}
-
-	.comment-item:hover::before {
-		opacity: 1;
+	.comment-item:active {
+		transform: rotate(0deg) scale(0.98);
+		box-shadow: 2rpx 2rpx 0 #000000;
 	}
 
 	.comment-header {
@@ -7437,9 +7429,10 @@
 
 	.user-name {
 		font-size: 26rpx;
-		font-weight: 600;
-		color: #333;
-		letter-spacing: 0.2rpx;
+		font-weight: 700;
+		color: #000000;
+		letter-spacing: 0.5rpx;
+		text-transform: uppercase;
 	}
 
 	.comment-time {
@@ -7475,11 +7468,12 @@
 
 	.comment-text {
 		font-size: 26rpx;
-		color: #555;
-		line-height: 1.5;
+		color: #000000;
+		line-height: 1.6;
 		display: block;
-		font-weight: 400;
-		letter-spacing: 0.1rpx;
+		font-weight: 500;
+		letter-spacing: 0.3rpx;
+		margin-top: 12rpx;
 	}
 
 	.empty-comments {
@@ -7507,9 +7501,9 @@
 	}
 
 	.modal-footer {
-		background: #fafafa;
-		padding: 20rpx 24rpx;
-		border-top: 1rpx solid #e0e0e0;
+		background: #FFFFFF;
+		padding: 24rpx;
+		border-top: 5rpx solid #000000;
 		display: flex;
 		gap: 20rpx;
 	}
@@ -7517,87 +7511,72 @@
 	.footer-btn {
 		flex: 1;
 		height: 80rpx;
-		border: 2rpx solid transparent;
-		border-radius: 12rpx;
+		border: 5rpx solid #000000;
+		border-radius: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.2s ease;
+		transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 		position: relative;
 		overflow: hidden;
-		font-weight: 500;
-		letter-spacing: 0.3rpx;
+		font-weight: 700;
+		letter-spacing: 1rpx;
+		text-transform: uppercase;
 	}
 
 	.footer-btn:active {
-		transform: scale(0.98);
+		transform: scale(0.95);
 	}
 
 	.cancel-btn {
-		background: #ffffff;
-		border-color: #d0d0d0;
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+		background: #FFFFFF;
+		box-shadow: 4rpx 4rpx 0 #000000;
 	}
 
-	.cancel-btn:hover {
-		background: #f5f5f5;
-		border-color: #bbb;
-		box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+	.cancel-btn:active {
+		box-shadow: 2rpx 2rpx 0 #000000;
 	}
 
 	.cancel-btn .btn-text {
-		color: #333;
+		color: #000000;
 		font-size: 28rpx;
+		font-weight: 700;
 	}
 
 	.confirm-btn {
-		background: linear-gradient(135deg, #FF6B9D 0%, #FF1493 100%);
-		box-shadow: 0 4rpx 12rpx rgba(255, 107, 157, 0.3);
+		background: linear-gradient(135deg, #D9468F 0%, #FFD93D 50%, #5ED4B3 100%);
+		background-size: 200% 200%;
+		animation: buttonGradient 3s ease infinite;
+		box-shadow: 4rpx 4rpx 0 #000000;
 		position: relative;
 		overflow: hidden;
 	}
 
-	.confirm-btn::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 100%;
-		height: 100%;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-		transition: left 0.5s ease;
+	@keyframes buttonGradient {
+		0% { background-position: 0% 50%; }
+		50% { background-position: 100% 50%; }
+		100% { background-position: 0% 50%; }
 	}
 
-	.confirm-btn:hover::before {
-		left: 100%;
-	}
-
-	.confirm-btn:hover {
-		box-shadow: 0 6rpx 16rpx rgba(255, 107, 157, 0.4);
-		transform: translateY(-1rpx);
-	}
-
-	.confirm-btn .btn-text {
-		color: #ffffff;
-		font-size: 28rpx;
-		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.15);
-	}
-
-	.confirm-btn:active::before {
-		left: 100%;
-	}
-
-	.btn-text {
-		font-size: 28rpx;
-		font-weight: bold;
-		color: #000;
-		position: relative;
-		z-index: 1;
+	.confirm-btn:active {
+		box-shadow: 2rpx 2rpx 0 #000000;
 	}
 
 	.confirm-btn .btn-text {
 		color: #FFFFFF;
-		text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.3);
+		font-size: 28rpx;
+		font-weight: 700;
+		text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+		position: relative;
+		z-index: 1;
+	}
+
+	.btn-text {
+		font-size: 28rpx;
+		font-weight: 700;
+		color: #000;
+		position: relative;
+		z-index: 1;
 	}
 
 	/* 投票特效容器 */
@@ -8414,69 +8393,49 @@
 	.comment-modal {
 		width: 90%;
 		max-width: 600rpx;
-		background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-		border-radius: 32rpx;
-		box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.15), 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+		border-radius: 0;
+		border: 6rpx solid #000000;
+		box-shadow: 
+			12rpx 12rpx 0 #9B6ED8,
+			-12rpx -12rpx 0 #6BA3FF,
+			0 0 40rpx rgba(217, 70, 143, 0.4);
 		overflow: hidden;
-		animation: commentModalSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+		animation: commentModalSlideIn 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 		position: relative;
+		transform: rotate(1deg);
 	}
 
 	@keyframes commentModalSlideIn {
 		0% {
 			opacity: 0;
-			transform: translateY(60rpx) scale(0.9);
+			transform: translateY(60rpx) scale(0.9) rotate(1deg);
 		}
 		100% {
 			opacity: 1;
-			transform: translateY(0) scale(1);
+			transform: translateY(0) scale(1) rotate(1deg);
 		}
 	}
 
-	.comment-modal::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: linear-gradient(135deg, rgba(102, 126, 234, 0.02) 0%, rgba(118, 75, 162, 0.02) 100%);
-		pointer-events: none;
-	}
-
 	.comment-modal-header {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+		background: linear-gradient(135deg, #9B6ED8 0%, #6BA3FF 100%);
 		padding: 32rpx 36rpx;
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		position: relative;
 		overflow: hidden;
-	}
-
-	.comment-modal-header::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 100%;
-		height: 100%;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-		animation: commentHeaderShimmer 3s infinite;
-	}
-
-	@keyframes commentHeaderShimmer {
-		0% { left: -100%; }
-		100% { left: 100%; }
+		border-bottom: 5rpx solid #000000;
+		box-shadow: 0 6rpx 0 #000000;
 	}
 
 	.comment-modal-title {
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 		font-size: 36rpx;
 		font-weight: 700;
 		color: #FFFFFF;
-		text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
-		letter-spacing: 0.5rpx;
+		text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+		letter-spacing: 1rpx;
+		text-transform: uppercase;
 		position: relative;
 		z-index: 1;
 	}
@@ -8484,32 +8443,32 @@
 	.comment-close-btn {
 		width: 48rpx;
 		height: 48rpx;
-		background: rgba(255, 255, 255, 0.2);
-		border-radius: 50%;
+		background: #000000;
+		border-radius: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.3s ease;
-		backdrop-filter: blur(10rpx);
-		border: 2rpx solid rgba(255, 255, 255, 0.3);
+		transition: all 0.2s ease;
+		border: 4rpx solid #FFFFFF;
+		box-shadow: 4rpx 4rpx 0 #FFFFFF;
 		position: relative;
 		z-index: 1;
 	}
 
 	.comment-close-btn:active {
 		transform: scale(0.9);
-		background: rgba(255, 255, 255, 0.3);
+		box-shadow: 2rpx 2rpx 0 #FFFFFF;
 	}
 
 	.comment-close-icon {
-		font-size: 24rpx;
+		font-size: 28rpx;
 		color: #FFFFFF;
-		font-weight: bold;
-		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.3);
+		font-weight: 900;
+		text-shadow: 1rpx 1rpx 0 #000000;
 	}
 	.comment-modal-content {
 		padding: 36rpx;
-		background: linear-gradient(135deg, #fafbfc 0%, #f8f9fa 100%);
+		background: #FFFFFF;
 		position: relative;
 		z-index: 1;
 	}
@@ -8522,23 +8481,21 @@
 		width: 100%;
 		min-height: 200rpx;
 		padding: 24rpx 28rpx;
-		background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-		border: 3rpx solid rgba(102, 126, 234, 0.1);
-		border-radius: 24rpx;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+		background: #FFFFFF;
+		border: 5rpx solid #000000;
+		border-radius: 0;
 		font-size: 30rpx;
 		line-height: 1.6;
-		color: #2c3e50;
+		color: #000000;
 		box-sizing: border-box;
-		transition: all 0.3s ease;
-		backdrop-filter: blur(8rpx);
-		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+		transition: all 0.2s ease;
+		box-shadow: 4rpx 4rpx 0 #000000;
 		resize: none;
 	}
 
 	.comment-textarea:focus {
-		border-color: rgba(102, 126, 234, 0.3);
-		box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.1);
+		border-color: #D9468F;
+		box-shadow: 4rpx 4rpx 0 #D9468F;
 		outline: none;
 	}
 
@@ -8551,25 +8508,25 @@
 		position: absolute;
 		bottom: 16rpx;
 		right: 20rpx;
-		background: rgba(255, 255, 255, 0.9);
+		background: #000000;
 		padding: 8rpx 12rpx;
-		border-radius: 12rpx;
-		backdrop-filter: blur(8rpx);
-		border: 1rpx solid rgba(0, 0, 0, 0.06);
+		border-radius: 0;
+		border: 3rpx solid #FFFFFF;
+		box-shadow: 3rpx 3rpx 0 #FFFFFF;
 	}
 
 	.char-count-text {
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 		font-size: 22rpx;
-		color: #6c757d;
-		font-weight: 500;
+		color: #FFFFFF;
+		font-weight: 700;
 	}
 
 	.comment-modal-footer {
 		padding: 24rpx 36rpx 36rpx;
 		display: flex;
 		gap: 20rpx;
-		background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+		background: #FFFFFF;
+		border-top: 5rpx solid #000000;
 		position: relative;
 		z-index: 1;
 	}
@@ -8577,84 +8534,72 @@
 	.comment-footer-btn {
 		flex: 1;
 		height: 88rpx;
-		border-radius: 24rpx;
+		border-radius: 0;
+		border: 5rpx solid #000000;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 		position: relative;
 		overflow: hidden;
-		backdrop-filter: blur(8rpx);
+		font-weight: 700;
+		letter-spacing: 1rpx;
+		text-transform: uppercase;
 	}
 
 	.comment-cancel-btn {
-		background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-		border: 2rpx solid rgba(0, 0, 0, 0.1);
-		box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+		background: #FFFFFF;
+		box-shadow: 4rpx 4rpx 0 #000000;
 	}
 
 	.comment-cancel-btn:active {
 		transform: scale(0.95);
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+		box-shadow: 2rpx 2rpx 0 #000000;
 	}
 
 	.comment-confirm-btn {
-		background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-		border: 2rpx solid rgba(102, 126, 234, 0.3);
-		box-shadow: 0 4rpx 16rpx rgba(102, 126, 234, 0.2);
+		background: linear-gradient(135deg, #D9468F 0%, #FFD93D 50%, #5ED4B3 100%);
+		background-size: 200% 200%;
+		animation: buttonGradient 3s ease infinite;
+		box-shadow: 4rpx 4rpx 0 #000000;
 	}
 
 	.comment-confirm-btn:active {
 		transform: scale(0.95);
-		box-shadow: 0 2rpx 8rpx rgba(102, 126, 234, 0.3);
+		box-shadow: 2rpx 2rpx 0 #000000;
 	}
 
 	.comment-confirm-btn.disabled {
-		background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-		border-color: rgba(0, 0, 0, 0.1);
-		box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
-		opacity: 0.6;
+		background: #666666;
+		box-shadow: 4rpx 4rpx 0 #000000;
+		opacity: 0.7;
+		animation: none;
 	}
 
 	.comment-confirm-btn.disabled:active {
 		transform: none;
 	}
-	.comment-confirm-btn::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: -100%;
-		width: 100%;
-		height: 100%;
-		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-		transition: left 0.5s ease;
-	}
-
-	.comment-confirm-btn:not(.disabled):active::before {
-		left: 100%;
-	}
 
 	.comment-btn-text {
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 		font-size: 32rpx;
-		font-weight: 600;
-		letter-spacing: 0.3rpx;
+		font-weight: 700;
+		letter-spacing: 1rpx;
 		position: relative;
 		z-index: 1;
 	}
 
 	.comment-cancel-btn .comment-btn-text {
-		color: #495057;
+		color: #000000;
 	}
 
 	.comment-confirm-btn .comment-btn-text {
 		color: #FFFFFF;
-		text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.2);
+		text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 	}
 
 	.comment-confirm-btn.disabled .comment-btn-text {
-		color: #6c757d;
-		text-shadow: none;
+		color: #FFFFFF;
+		text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 	}
 
 	/* 调整对抗条文字布局 */

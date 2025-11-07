@@ -39,12 +39,6 @@
 					
 					<!-- 直播间信息 -->
 					<view class="card-content">
-						<!-- 直播间名称 -->
-						<view class="stream-name">
-							<image src="/static/iconfont/bofang.png" class="name-icon-img" mode="aspectFit"></image>
-							<text class="name-text">{{ stream.name }}</text>
-						</view>
-						
 						<!-- 辩题信息 -->
 						<view v-if="stream.debateTopic && stream.debateTopic.title" class="debate-info">
 							<text class="debate-title">{{ stream.debateTopic.title }}</text>
@@ -503,11 +497,11 @@ export default {
 	flex-direction: column;
 	position: relative;
 	overflow: hidden;
-	box-sizing: border-box; /* 确保宽度计算正确 */
-	max-width: 100vw; /* 防止超出视口宽度 */
+	box-sizing: border-box;
+	max-width: 100vw;
 }
 
-/* 背景 - 与 home.vue 相同的渐变背景 */
+/* 背景 - 波普艺术风格：柔和的渐变 */
 .fullscreen-bg {
 	position: fixed;
 	top: 0;
@@ -516,11 +510,40 @@ export default {
 	height: 100%;
 	background: linear-gradient(
 		135deg,
-		rgba(30, 30, 60, 0.98) 0%,
-		rgba(20, 20, 40, 0.98) 50%,
-		rgba(15, 15, 30, 0.98) 100%
+		#D9468F 0%,
+		#9B6ED8 25%,
+		#6BA3FF 50%,
+		#5ED4B3 75%,
+		#FFD93D 100%
 	);
+	background-size: 400% 400%;
+	animation: popGradient 15s ease infinite;
 	z-index: 0;
+}
+
+@keyframes popGradient {
+	0% { background-position: 0% 50%; }
+	50% { background-position: 100% 50%; }
+	100% { background-position: 0% 50%; }
+}
+
+.fullscreen-bg::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background: 
+		radial-gradient(circle at 20% 30%, rgba(217, 70, 143, 0.25) 0%, transparent 50%),
+		radial-gradient(circle at 80% 70%, rgba(155, 110, 216, 0.25) 0%, transparent 50%),
+		radial-gradient(circle at 50% 50%, rgba(107, 163, 255, 0.15) 0%, transparent 50%);
+	animation: popPulse 8s ease-in-out infinite;
+}
+
+@keyframes popPulse {
+	0%, 100% { opacity: 0.6; transform: scale(1); }
+	50% { opacity: 0.8; transform: scale(1.1); }
 }
 
 /* ==================== 顶部标题区域 ==================== */
@@ -535,35 +558,53 @@ export default {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 15rpx;
+	gap: 20rpx;
 }
 
 .title-main {
 	display: flex;
 	align-items: center;
-	gap: 12rpx;
+	gap: 16rpx;
+	transform: rotate(-2deg);
+	animation: titleBounce 3s ease-in-out infinite;
+}
+
+@keyframes titleBounce {
+	0%, 100% { transform: rotate(-2deg) translateY(0); }
+	50% { transform: rotate(2deg) translateY(-8rpx); }
 }
 
 .title-icon-img {
-	width: 48rpx;
-	height: 48rpx;
+	width: 56rpx;
+	height: 56rpx;
+	filter: drop-shadow(0 0 20rpx #D9468F) drop-shadow(0 0 40rpx #6BA3FF);
+	animation: iconSpin 4s linear infinite;
+}
+
+@keyframes iconSpin {
+	0% { transform: rotate(0deg) scale(1); }
+	50% { transform: rotate(180deg) scale(1.1); }
+	100% { transform: rotate(360deg) scale(1); }
 }
 
 .title-main-text {
-	font-size: 52rpx;
+	font-size: 64rpx;
 	font-weight: 700;
-	color: #ffffff;
+	color: #FFFFFF;
 	text-shadow: 
-		0 0 20rpx rgba(255, 100, 150, 0.6),
-		0 4rpx 10rpx rgba(0, 0, 0, 0.5);
-	letter-spacing: 3rpx;
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+	letter-spacing: 2rpx;
 }
 
+
 .title-sub {
-	font-size: 24rpx;
-	color: rgba(255, 255, 255, 0.7);
-	letter-spacing: 2rpx;
+	font-size: 28rpx;
+	color: #FFFFFF;
+	letter-spacing: 1rpx;
 	text-transform: uppercase;
+	font-weight: 600;
+	text-shadow: 
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
 
 /* ==================== 直播列表区域 ==================== */
@@ -589,112 +630,153 @@ export default {
 .live-card {
 	background: linear-gradient(
 		135deg,
-		rgba(255, 255, 255, 0.08) 0%,
-		rgba(255, 255, 255, 0.03) 100%
+		rgba(255, 255, 255, 0.95) 0%,
+		rgba(255, 255, 255, 0.9) 100%
 	);
-	border-radius: 24rpx;
+	border-radius: 0;
 	padding: 30rpx;
-	backdrop-filter: blur(20rpx);
-	border: 2rpx solid rgba(255, 255, 255, 0.1);
+	border: 6rpx solid #000000;
 	box-shadow: 
-		0 8rpx 32rpx rgba(0, 0, 0, 0.3),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
-	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+		12rpx 12rpx 0 #D9468F,
+		-12rpx -12rpx 0 #6BA3FF,
+		0 0 40rpx rgba(255, 217, 61, 0.4);
+	transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 	position: relative;
-	overflow: hidden;
+	overflow: visible;
 	width: 100%;
-	box-sizing: border-box; /* 确保padding包含在宽度内 */
-	max-width: 100%; /* 防止超出容器 */
+	box-sizing: border-box;
+	max-width: 100%;
+	transform: rotate(-1deg);
+	animation: cardFloat 4s ease-in-out infinite;
+}
+
+.live-card:nth-child(even) {
+	transform: rotate(1deg);
+	box-shadow: 
+		-12rpx 12rpx 0 #5ED4B3,
+		12rpx -12rpx 0 #9B6ED8,
+		0 0 40rpx rgba(217, 70, 143, 0.4);
+}
+
+@keyframes cardFloat {
+	0%, 100% { transform: rotate(-1deg) translateY(0); }
+	50% { transform: rotate(1deg) translateY(-10rpx); }
 }
 
 .live-card::before {
 	content: '';
 	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 4rpx;
+	top: -6rpx;
+	left: -6rpx;
+	right: -6rpx;
+	height: 8rpx;
 	background: linear-gradient(90deg, 
-		rgba(255, 100, 150, 0.3) 0%,
-		rgba(100, 150, 255, 0.3) 100%
+		#D9468F 0%,
+		#FFD93D 25%,
+		#5ED4B3 50%,
+		#6BA3FF 75%,
+		#9B6ED8 100%
 	);
-	opacity: 0;
-	transition: opacity 0.3s;
+	background-size: 200% 100%;
+	animation: borderRun 3s linear infinite;
+}
+
+@keyframes borderRun {
+	0% { background-position: 0% 0%; }
+	100% { background-position: 200% 0%; }
 }
 
 .live-card.is-live::before {
-	opacity: 1;
-	animation: gradientShift 3s ease-in-out infinite;
+	height: 12rpx;
+	animation: borderRun 1s linear infinite, borderPulse 2s ease-in-out infinite;
 }
 
-@keyframes gradientShift {
-	0%, 100% {
-		background: linear-gradient(90deg, 
-			rgba(255, 100, 150, 0.6) 0%,
-			rgba(100, 150, 255, 0.6) 100%
-		);
-	}
-	50% {
-		background: linear-gradient(90deg, 
-			rgba(100, 150, 255, 0.6) 0%,
-			rgba(255, 100, 150, 0.6) 100%
-		);
-	}
+@keyframes borderPulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.7; }
 }
 
 .live-card:active {
-	transform: scale(0.98);
+	transform: rotate(0deg) scale(0.95) !important;
 	box-shadow: 
-		0 4rpx 16rpx rgba(0, 0, 0, 0.4),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.1);
+		6rpx 6rpx 0 #D9468F,
+		-6rpx -6rpx 0 #6BA3FF,
+		0 0 60rpx rgba(255, 217, 61, 0.6);
 }
 
 /* ==================== 直播状态标签 ==================== */
 .live-status-badge {
 	display: inline-flex;
 	align-items: center;
-	gap: 8rpx;
-	padding: 8rpx 16rpx;
-	border-radius: 20rpx;
-	background: rgba(100, 100, 100, 0.3);
-	border: 1rpx solid rgba(255, 255, 255, 0.2);
+	gap: 10rpx;
+	padding: 12rpx 24rpx;
+	border-radius: 0;
+	background: #000000;
+	border: 4rpx solid #FFFFFF;
 	margin-bottom: 20rpx;
+	transform: rotate(-3deg);
+	box-shadow: 
+		4rpx 4rpx 0 #D9468F,
+		-4rpx -4rpx 0 #6BA3FF;
 }
 
 .live-status-badge.live {
-	background: rgba(255, 50, 50, 0.2);
-	border-color: rgba(255, 50, 50, 0.5);
-	animation: pulseLive 2s ease-in-out infinite;
+	background: #D9468F;
+	border-color: #FFD93D;
+	box-shadow: 
+		6rpx 6rpx 0 #000000,
+		0 0 30rpx #D9468F,
+		0 0 60rpx rgba(217, 70, 143, 0.6);
+	animation: badgePulse 1.5s ease-in-out infinite, badgeShake 0.5s ease-in-out infinite;
 }
 
-@keyframes pulseLive {
+@keyframes badgePulse {
 	0%, 100% {
-		box-shadow: 0 0 0 0 rgba(255, 50, 50, 0.7);
+		box-shadow: 
+			6rpx 6rpx 0 #000000,
+			0 0 30rpx #D9468F,
+			0 0 60rpx rgba(217, 70, 143, 0.6);
+		transform: rotate(-3deg) scale(1);
 	}
 	50% {
-		box-shadow: 0 0 0 10rpx rgba(255, 50, 50, 0);
+		box-shadow: 
+			6rpx 6rpx 0 #000000,
+			0 0 50rpx #D9468F,
+			0 0 100rpx rgba(217, 70, 143, 0.8);
+		transform: rotate(-3deg) scale(1.05);
 	}
+}
+
+@keyframes badgeShake {
+	0%, 100% { transform: rotate(-3deg) translateX(0); }
+	25% { transform: rotate(-2deg) translateX(-2rpx); }
+	75% { transform: rotate(-4deg) translateX(2rpx); }
 }
 
 .status-dot {
-	font-size: 20rpx;
-	color: #999;
+	font-size: 24rpx;
+	color: #FFFFFF;
+	font-weight: 700;
 }
 
 .live-status-badge.live .status-dot {
-	color: #ff3232;
-	animation: blink 1.5s ease-in-out infinite;
+	color: #FFD93D;
+	animation: dotBlink 0.8s ease-in-out infinite;
+	text-shadow: 0 0 20rpx #FFD93D;
 }
 
-@keyframes blink {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.3; }
+@keyframes dotBlink {
+	0%, 100% { opacity: 1; transform: scale(1); }
+	50% { opacity: 0.5; transform: scale(1.3); }
 }
 
 .status-text {
-	font-size: 22rpx;
-	color: rgba(255, 255, 255, 0.8);
-	font-weight: 500;
+	font-size: 26rpx;
+	color: #FFFFFF;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5rpx;
+	text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
 
 /* ==================== 卡片内容 ==================== */
@@ -718,58 +800,72 @@ export default {
 }
 
 .name-text {
-	font-size: 32rpx;
-	font-weight: 600;
-	color: #ffffff;
-	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+	font-size: 36rpx;
+	font-weight: 700;
+	color: #000000;
+	letter-spacing: 0.5rpx;
 }
 
 /* ==================== 辩题信息 ==================== */
 .debate-info {
-	background: rgba(0, 0, 0, 0.2);
-	border-radius: 16rpx;
-	padding: 20rpx;
-	border: 1rpx solid rgba(255, 255, 255, 0.05);
+	background: linear-gradient(135deg, #FFD93D 0%, #D9468F 100%);
+	border-radius: 0;
+	padding: 24rpx;
+	border: 5rpx solid #000000;
+	box-shadow: 
+		6rpx 6rpx 0 #000000,
+		inset 0 0 20rpx rgba(255, 255, 255, 0.3);
+	transform: rotate(1deg);
 }
 
 .debate-title {
 	display: block;
-	font-size: 26rpx;
-	color: rgba(255, 255, 255, 0.9);
-	margin-bottom: 12rpx;
+	font-size: 28rpx;
+	color: #FFFFFF;
+	margin-bottom: 16rpx;
 	line-height: 1.4;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5rpx;
+	text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
 
 .debate-sides {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	gap: 10rpx;
+	gap: 16rpx;
 	width: 100%;
-	box-sizing: border-box; /* 确保宽度计算正确 */
+	box-sizing: border-box;
 }
 
 .side {
 	flex: 1;
-	font-size: 22rpx;
-	padding: 8rpx 12rpx;
-	border-radius: 8rpx;
+	font-size: 24rpx;
+	padding: 14rpx 16rpx;
+	border-radius: 0;
 	text-align: center;
-	min-width: 0; /* 防止flex子元素溢出 */
-	box-sizing: border-box; /* 确保padding包含在宽度内 */
-	overflow: hidden; /* 防止文本溢出 */
-	text-overflow: ellipsis; /* 文本溢出显示省略号 */
-	white-space: nowrap; /* 不换行 */
+	min-width: 0;
+	box-sizing: border-box;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 6rpx;
+	gap: 8rpx;
+	border: 4rpx solid #000000;
+	box-shadow: 4rpx 4rpx 0 #000000;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.5rpx;
 }
 
 .side-icon-img {
-	width: 24rpx;
-	height: 24rpx;
+	width: 28rpx;
+	height: 28rpx;
 	flex-shrink: 0;
+	filter: drop-shadow(2rpx 2rpx 0 #000000);
 }
 
 .side-text {
@@ -781,72 +877,96 @@ export default {
 }
 
 .left-side {
-	background: rgba(255, 100, 150, 0.15);
-	color: rgba(255, 150, 180, 0.95);
-	border: 1rpx solid rgba(255, 100, 150, 0.3);
+	background: #D9468F;
+	color: #FFFFFF;
+	transform: rotate(-2deg);
 }
 
 .right-side {
-	background: rgba(100, 150, 255, 0.15);
-	color: rgba(150, 180, 255, 0.95);
-	border: 1rpx solid rgba(100, 150, 255, 0.3);
+	background: #6BA3FF;
+	color: #FFFFFF;
+	transform: rotate(2deg);
 }
 
 .vs {
-	font-size: 20rpx;
-	color: rgba(255, 255, 255, 0.5);
-	font-weight: 600;
+	font-size: 32rpx;
+	color: #FFFFFF;
+	font-weight: 800;
+	text-shadow: 
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
+
 
 /* ==================== 统计数据 ==================== */
 .stream-stats {
 	display: flex;
-	gap: 24rpx;
+	gap: 20rpx;
 }
 
 .stat-item {
 	display: flex;
 	align-items: center;
-	gap: 6rpx;
-	padding: 10rpx 16rpx;
-	background: rgba(0, 0, 0, 0.2);
-	border-radius: 12rpx;
-	border: 1rpx solid rgba(255, 255, 255, 0.05);
+	gap: 8rpx;
+	padding: 14rpx 20rpx;
+	background: #000000;
+	border-radius: 0;
+	border: 4rpx solid #FFFFFF;
+	box-shadow: 
+		4rpx 4rpx 0 #D9468F,
+		-4rpx -4rpx 0 #6BA3FF;
+	transform: rotate(-1deg);
+}
+
+.stat-item:nth-child(even) {
+	transform: rotate(1deg);
+	box-shadow: 
+		-4rpx 4rpx 0 #5ED4B3,
+		4rpx -4rpx 0 #9B6ED8;
 }
 
 .stat-icon-img {
-	width: 24rpx;
-	height: 24rpx;
+	width: 28rpx;
+	height: 28rpx;
+	filter: drop-shadow(0 0 10rpx #FFD93D);
 }
 
 .stat-label {
-	font-size: 22rpx;
-	color: rgba(255, 255, 255, 0.6);
+	font-size: 24rpx;
+	color: #FFFFFF;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5rpx;
 }
 
 .stat-value {
-	font-size: 24rpx;
-	font-weight: 600;
-	color: #ffffff;
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #FFD93D;
+	text-shadow: 
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
 
 /* ==================== 投票进度条 ==================== */
 .vote-progress {
-	margin-top: 8rpx;
+	margin-top: 16rpx;
 	width: 100%;
-	box-sizing: border-box; /* 确保宽度计算正确 */
+	box-sizing: border-box;
 }
 
 .progress-bar-container {
 	display: flex;
-	height: 40rpx;
-	border-radius: 20rpx;
-	overflow: hidden;
-	background: rgba(0, 0, 0, 0.3);
-	border: 1rpx solid rgba(255, 255, 255, 0.1);
+	height: 50rpx;
+	border-radius: 0;
+	overflow: visible;
+	background: #000000;
+	border: 5rpx solid #FFFFFF;
+	box-shadow: 
+		6rpx 6rpx 0 #D9468F,
+		-6rpx -6rpx 0 #6BA3FF;
 	width: 100%;
-	box-sizing: border-box; /* 确保宽度计算正确 */
-	max-width: 100%; /* 防止超出容器 */
+	box-sizing: border-box;
+	max-width: 100%;
+	position: relative;
 }
 
 .progress-left,
@@ -854,28 +974,45 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: width 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+	position: relative;
+	overflow: visible;
 }
 
 .progress-left {
 	background: linear-gradient(90deg, 
-		rgba(255, 100, 150, 0.6) 0%,
-		rgba(255, 100, 150, 0.8) 100%
+		#D9468F 0%,
+		#FFD93D 50%,
+		#D9468F 100%
 	);
+	background-size: 200% 100%;
+	animation: progressShine 2s linear infinite;
+	box-shadow: inset 0 0 20rpx rgba(255, 255, 255, 0.3);
 }
 
 .progress-right {
 	background: linear-gradient(90deg, 
-		rgba(100, 150, 255, 0.8) 0%,
-		rgba(100, 150, 255, 0.6) 100%
+		#6BA3FF 0%,
+		#5ED4B3 50%,
+		#6BA3FF 100%
 	);
+	background-size: 200% 100%;
+	animation: progressShine 2s linear infinite reverse;
+	box-shadow: inset 0 0 20rpx rgba(255, 255, 255, 0.3);
+}
+
+@keyframes progressShine {
+	0% { background-position: 0% 0%; }
+	100% { background-position: 200% 0%; }
 }
 
 .progress-text {
-	font-size: 20rpx;
-	color: #ffffff;
-	font-weight: 600;
-	text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.5);
+	font-size: 24rpx;
+	color: #FFFFFF;
+	font-weight: 700;
+	text-shadow: 
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+	z-index: 10;
 }
 
 /* ==================== 票数信息 ==================== */
@@ -883,27 +1020,29 @@ export default {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	margin-top: 12rpx;
-	gap: 12rpx;
+	margin-top: 16rpx;
+	gap: 16rpx;
 }
 
 .vote-label {
-	font-size: 22rpx;
-	font-weight: 500;
-	padding: 6rpx 12rpx;
-	border-radius: 8rpx;
+	font-size: 24rpx;
+	font-weight: 700;
+	padding: 10rpx 18rpx;
+	border-radius: 0;
+	border: 4rpx solid #000000;
+	text-transform: uppercase;
+	letter-spacing: 0.5rpx;
+	box-shadow: 4rpx 4rpx 0 #000000;
 }
 
 .left-label {
-	color: rgba(255, 150, 180, 0.95);
-	background: rgba(255, 100, 150, 0.15);
-	border: 1rpx solid rgba(255, 100, 150, 0.3);
+	color: #FFFFFF;
+	background: #D9468F;
 }
 
 .right-label {
-	color: rgba(150, 180, 255, 0.95);
-	background: rgba(100, 150, 255, 0.15);
-	border: 1rpx solid rgba(100, 150, 255, 0.3);
+	color: #FFFFFF;
+	background: #6BA3FF;
 }
 
 /* ==================== 进入按钮 ==================== */
@@ -911,41 +1050,97 @@ export default {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	gap: 10rpx;
-	padding: 20rpx;
-	border-radius: 16rpx;
+	gap: 12rpx;
+	padding: 24rpx;
+	border-radius: 0;
 	background: linear-gradient(135deg, 
-		rgba(255, 100, 150, 0.8) 0%,
-		rgba(255, 100, 150, 0.6) 100%
+		#D9468F 0%,
+		#FFD93D 50%,
+		#5ED4B3 100%
 	);
-	border: 2rpx solid rgba(255, 100, 150, 0.5);
+	background-size: 200% 200%;
+	animation: buttonGradient 3s ease infinite;
+	border: 6rpx solid #000000;
 	box-shadow: 
-		0 4rpx 12rpx rgba(255, 100, 150, 0.3),
-		inset 0 1rpx 0 rgba(255, 255, 255, 0.3);
-	transition: all 0.3s;
-	margin-top: 12rpx;
+		8rpx 8rpx 0 #000000,
+		0 0 40rpx #D9468F,
+		0 0 80rpx rgba(217, 70, 143, 0.4);
+	transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+	margin-top: 16rpx;
 	width: 100%;
-	box-sizing: border-box; /* 确保padding包含在宽度内 */
-	max-width: 100%; /* 防止超出容器 */
+	box-sizing: border-box;
+	max-width: 100%;
+	transform: rotate(-1deg);
+	position: relative;
+	overflow: hidden;
+}
+
+@keyframes buttonGradient {
+	0% { background-position: 0% 50%; }
+	50% { background-position: 100% 50%; }
+	100% { background-position: 0% 50%; }
+}
+
+.enter-btn::before {
+	content: '';
+	position: absolute;
+	top: -50%;
+	left: -50%;
+	width: 200%;
+	height: 200%;
+	background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+	animation: buttonShine 2s linear infinite;
+}
+
+@keyframes buttonShine {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.enter-btn:active {
+	transform: rotate(0deg) scale(0.95);
+	box-shadow: 
+		4rpx 4rpx 0 #000000,
+		0 0 60rpx #D9468F,
+		0 0 120rpx rgba(217, 70, 143, 0.7);
 }
 
 .enter-btn.disabled {
-	background: rgba(100, 100, 100, 0.3);
-	border-color: rgba(255, 255, 255, 0.1);
-	box-shadow: none;
-	opacity: 0.6;
+	background: #666666;
+	border-color: #000000;
+	box-shadow: 4rpx 4rpx 0 #000000;
+	opacity: 0.7;
+	animation: none;
+}
+
+.enter-btn.disabled::before {
+	display: none;
 }
 
 .btn-text {
-	font-size: 28rpx;
-	font-weight: 600;
-	color: #ffffff;
-	text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.3);
+	font-size: 32rpx;
+	font-weight: 700;
+	color: #FFFFFF;
+	text-shadow: 
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+	text-transform: uppercase;
+	letter-spacing: 1rpx;
+	position: relative;
+	z-index: 1;
 }
 
 .btn-icon-img {
-	width: 28rpx;
-	height: 28rpx;
+	width: 32rpx;
+	height: 32rpx;
+	filter: drop-shadow(2rpx 2rpx 0 #000000) drop-shadow(0 0 10rpx #FFFFFF);
+	position: relative;
+	z-index: 1;
+	animation: iconBounce 1s ease-in-out infinite;
+}
+
+@keyframes iconBounce {
+	0%, 100% { transform: translateY(0) rotate(0deg); }
+	50% { transform: translateY(-4rpx) rotate(10deg); }
 }
 
 /* ==================== 加载状态 ==================== */
@@ -955,25 +1150,45 @@ export default {
 	align-items: center;
 	justify-content: center;
 	padding: 100rpx 40rpx;
-	gap: 30rpx;
+	gap: 40rpx;
 }
 
 .loading-spinner {
-	width: 60rpx;
-	height: 60rpx;
-	border: 4rpx solid rgba(255, 255, 255, 0.2);
-	border-top-color: rgba(255, 100, 150, 0.8);
-	border-radius: 50%;
-	animation: spin 1s linear infinite;
+	width: 80rpx;
+	height: 80rpx;
+	border: 8rpx solid #000000;
+	border-top-color: #D9468F;
+	border-right-color: #6BA3FF;
+	border-bottom-color: #5ED4B3;
+	border-left-color: #FFD93D;
+	border-radius: 0;
+	animation: popSpin 1s linear infinite;
+	box-shadow: 
+		0 0 30rpx #D9468F,
+		0 0 60rpx rgba(217, 70, 143, 0.4);
+	transform: rotate(45deg);
 }
 
-@keyframes spin {
-	to { transform: rotate(360deg); }
+@keyframes popSpin {
+	0% { transform: rotate(45deg) scale(1); }
+	50% { transform: rotate(225deg) scale(1.2); }
+	100% { transform: rotate(405deg) scale(1); }
 }
 
 .loading-text {
-	font-size: 26rpx;
-	color: rgba(255, 255, 255, 0.7);
+	font-size: 32rpx;
+	color: #FFFFFF;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 1rpx;
+	text-shadow: 
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+	animation: textPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes textPulse {
+	0%, 100% { transform: scale(1); opacity: 1; }
+	50% { transform: scale(1.1); opacity: 0.8; }
 }
 
 /* ==================== 空状态 ==================== */
@@ -983,24 +1198,39 @@ export default {
 	align-items: center;
 	justify-content: center;
 	padding: 100rpx 40rpx;
-	gap: 20rpx;
+	gap: 30rpx;
 }
 
 .empty-icon-img {
-	width: 100rpx;
-	height: 100rpx;
-	opacity: 0.5;
+	width: 120rpx;
+	height: 120rpx;
+	filter: drop-shadow(0 0 30rpx #D9468F) drop-shadow(0 0 60rpx #6BA3FF);
+	animation: iconFloat 3s ease-in-out infinite;
+	transform: rotate(-10deg);
+}
+
+@keyframes iconFloat {
+	0%, 100% { transform: rotate(-10deg) translateY(0); }
+	50% { transform: rotate(10deg) translateY(-20rpx); }
 }
 
 .empty-text {
-	font-size: 32rpx;
-	color: rgba(255, 255, 255, 0.8);
-	font-weight: 500;
+	font-size: 40rpx;
+	color: #FFFFFF;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 1rpx;
+	text-shadow: 
+		1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
 
 .empty-hint {
-	font-size: 24rpx;
-	color: rgba(255, 255, 255, 0.5);
+	font-size: 28rpx;
+	color: #FFFFFF;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5rpx;
+	text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
 
 /* ==================== 底部刷新按钮 ==================== */
@@ -1012,11 +1242,10 @@ export default {
 	padding: 30rpx;
 	background: linear-gradient(
 		to top,
-		rgba(20, 20, 40, 0.95) 0%,
-		rgba(20, 20, 40, 0.7) 70%,
+		rgba(0, 0, 0, 0.95) 0%,
+		rgba(0, 0, 0, 0.7) 70%,
 		transparent 100%
 	);
-	backdrop-filter: blur(10rpx);
 	z-index: 20;
 	display: flex;
 	justify-content: center;
@@ -1025,29 +1254,68 @@ export default {
 .refresh-btn {
 	display: flex;
 	align-items: center;
-	gap: 12rpx;
-	padding: 18rpx 40rpx;
-	border-radius: 50rpx;
-	background: rgba(255, 255, 255, 0.1);
-	border: 2rpx solid rgba(255, 255, 255, 0.2);
-	backdrop-filter: blur(10rpx);
-	transition: all 0.3s;
+	gap: 16rpx;
+	padding: 20rpx 50rpx;
+	border-radius: 0;
+	background: linear-gradient(135deg, #9B6ED8 0%, #6BA3FF 100%);
+	border: 5rpx solid #000000;
+	box-shadow: 
+		6rpx 6rpx 0 #000000,
+		0 0 30rpx #6BA3FF,
+		0 0 60rpx rgba(107, 163, 255, 0.4);
+	transition: all 0.2s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+	transform: rotate(-1deg);
+	position: relative;
+	overflow: hidden;
+}
+
+.refresh-btn::before {
+	content: '';
+	position: absolute;
+	top: -50%;
+	left: -50%;
+	width: 200%;
+	height: 200%;
+	background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+	animation: refreshShine 2s linear infinite;
+}
+
+@keyframes refreshShine {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
 }
 
 .refresh-btn:active {
-	transform: scale(0.95);
-	background: rgba(255, 255, 255, 0.15);
+	transform: rotate(0deg) scale(0.95);
+	box-shadow: 
+		3rpx 3rpx 0 #000000,
+		0 0 50rpx #6BA3FF,
+		0 0 100rpx rgba(107, 163, 255, 0.7);
 }
 
 .refresh-icon-img {
-	width: 30rpx;
-	height: 30rpx;
+	width: 36rpx;
+	height: 36rpx;
+	filter: drop-shadow(2rpx 2rpx 0 #000000);
+	position: relative;
+	z-index: 1;
+	animation: refreshSpin 2s linear infinite;
+}
+
+@keyframes refreshSpin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
 }
 
 .refresh-text {
-	font-size: 26rpx;
-	color: #ffffff;
-	font-weight: 500;
+	font-size: 30rpx;
+	color: #FFFFFF;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 1rpx;
+	text-shadow: 1rpx 1rpx 2rpx rgba(0, 0, 0, 0.5);
+	position: relative;
+	z-index: 1;
 }
 </style>
 
