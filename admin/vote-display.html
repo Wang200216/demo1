@@ -5,6 +5,14 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>票数统计大屏幕</title>
 	<style>
+		@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+		@font-face {
+			font-family: 'DSEG7Classic';
+			src: url('https://cdn.jsdelivr.net/npm/dseg7@0.0.1/dist/dseg7classic.woff2') format('woff2'),
+				 url('https://cdn.jsdelivr.net/npm/dseg7@0.0.1/dist/dseg7classic.woff') format('woff');
+		}
+
 		* {
 			margin: 0;
 			padding: 0;
@@ -12,12 +20,27 @@
 		}
 
 		body {
-			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-			background: #1a1a1a;
+			font-family: 'KaiTi', 'Kaiti SC', 'STKaiti', 'Adobe Kaiti Std', '楷体', 'KaiTi_GB2312', serif;
+			background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 50%, #16213e 100%);
 			color: white;
 			overflow: hidden;
 			width: 100vw;
 			height: 100vh;
+			position: relative;
+		}
+
+		body::before {
+			content: '';
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background:
+				radial-gradient(circle at 20% 50%, rgba(100, 150, 255, 0.08) 0%, transparent 50%),
+				radial-gradient(circle at 80% 80%, rgba(100, 180, 200, 0.06) 0%, transparent 50%);
+			pointer-events: none;
+			z-index: 0;
 		}
 
 		.container {
@@ -27,12 +50,29 @@
 			flex-direction: column;
 			position: relative;
 			padding-top: 40px;
+			gap: 24px;
+			z-index: 1;
+		}
+
+		.container::before {
+			content: '';
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background:
+				radial-gradient(ellipse 800px 600px at 20% 30%, rgba(100, 150, 255, 0.1) 0%, transparent 50%),
+				radial-gradient(ellipse 600px 800px at 80% 70%, rgba(100, 180, 220, 0.08) 0%, transparent 50%),
+				radial-gradient(ellipse 400px 400px at 50% 50%, rgba(50, 100, 200, 0.05) 0%, transparent 50%);
+			pointer-events: none;
+			z-index: 0;
 		}
 
 		/* 顶部条状显示区域 */
 		.header {
 			width: 100%;
-			height: 150px;
+			height: 110px;
 			display: flex;
 			position: relative;
 			overflow: hidden;
@@ -46,11 +86,11 @@
 			display: flex;
 			flex-direction: row;
 			align-items: center;
-			justify-content: center;
+			justify-content: space-between;
 			position: relative;
 			transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 			box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
-			gap: 20px;
+			padding: 0 30px;
 		}
 
 		.header-left::before {
@@ -71,11 +111,11 @@
 			display: flex;
 			flex-direction: row;
 			align-items: center;
-			justify-content: center;
+			justify-content: space-between;
 			position: relative;
 			transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 			box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
-			gap: 20px;
+			padding: 0 30px;
 		}
 
 		.header-right::before {
@@ -91,21 +131,21 @@
 
 		/* 顶部标签文字 */
 		.header-label {
-			font-size: 42px;
+			font-size: 32px;
 			font-weight: 900;
 			color: white;
 			text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
 			position: relative;
 			z-index: 1;
-			border: 3px solid rgba(255, 255, 255, 0.9);
-			padding: 8px 25px;
+			border: 2px solid rgba(255, 255, 255, 0.9);
+			padding: 6px 18px;
 			border-radius: 8px;
 			background: rgba(255, 255, 255, 0.1);
 		}
 
 		/* 进度条中的票数显示 */
 		.header-vote-value {
-			font-size: 64px;
+			font-size: 48px;
 			font-weight: 900;
 			color: white;
 			text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
@@ -127,12 +167,19 @@
 
 		/* 进度条中的百分比显示 */
 		.header-vote-percentage {
-			font-size: 32px;
+			font-size: 24px;
 			font-weight: 700;
 			color: rgba(255, 255, 255, 0.95);
 			text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 			position: relative;
 			z-index: 1;
+		}
+
+		.header-center-content {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			gap: 12px;
 		}
 
 		/* 顶部中间分隔线 */
@@ -141,29 +188,29 @@
 			left: 50%;
 			top: 0;
 			bottom: 0;
-			width: 4px;
+			width: 3px;
 			background: rgba(255, 255, 255, 0.9);
 			box-shadow: 0 0 15px rgba(255, 255, 255, 0.6);
 			z-index: 10;
 			transform: translateX(-50%);
 		}
 
-		/* 流信息（右上角小标签） */
+		/* 流信息（右下角小标签） */
 		.stream-info {
-			position: absolute;
-			top: 10px;
+			position: fixed;
+			bottom: 20px;
 			right: 20px;
-			font-size: 14px;
+			font-size: 12px;
 			color: rgba(255, 255, 255, 0.9);
 			background: rgba(0, 0, 0, 0.4);
-			padding: 6px 12px;
-			border-radius: 15px;
+			padding: 5px 10px;
+			border-radius: 12px;
 			display: flex;
 			align-items: center;
-			gap: 6px;
+			gap: 5px;
 			cursor: pointer;
 			transition: background 0.3s ease;
-			z-index: 20;
+			z-index: 1000;
 			backdrop-filter: blur(10px);
 			border: 1px solid rgba(255, 255, 255, 0.2);
 		}
@@ -172,9 +219,15 @@
 			background: rgba(0, 0, 0, 0.6);
 		}
 
+		.stream-info.collapsed {
+			opacity: 0;
+			pointer-events: none;
+			transition: opacity 0.3s ease;
+		}
+
 		.status-indicator {
-			width: 10px;
-			height: 10px;
+			width: 8px;
+			height: 8px;
 			border-radius: 50%;
 			background: #95a5a6;
 			animation: pulse 2s infinite;
@@ -192,53 +245,127 @@
 		/* 计时器和环节控制区域 */
 		.timer-section {
 			width: 100%;
-			padding: 30px 40px;
+			padding: 32px 40px;
 			display: flex;
 			flex-direction: column;
 			align-items: center;
 			gap: 20px;
-			background: rgba(0, 0, 0, 0.3);
+			background: rgba(0, 0, 0, 0.35);
 			backdrop-filter: blur(10px);
 		}
 
+		.timer-wrapper {
+			width: 100%;
+			max-width: 960px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			gap: 36px;
+		}
+
+		.timer-info {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 16px;
+			flex: 0 1 auto;
+			text-align: center;
+		}
+
+		.timer-actions {
+			display: flex;
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 12px;
+			display: none;
+		}
+
 		.segment-info {
-			font-size: 48px;
+			font-size: 42px;
 			font-weight: 900;
 			color: white;
 			text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
 			text-align: center;
+			letter-spacing: 2px;
 		}
 
 		.timer-display {
-			font-size: 120px;
-			font-weight: 900;
-			color: #f39c12;
-			text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.5);
-			font-family: 'Courier New', monospace;
-			letter-spacing: 8px;
+			font-size: 160px;
+			font-weight: 200;
+			color: #f0f4ff;
+			text-shadow:
+				0 0 40px rgba(100, 180, 255, 0.5),
+				0 0 80px rgba(100, 180, 255, 0.3),
+				0 8px 16px rgba(0, 0, 0, 0.4);
+			font-family: 'DSEG7Classic', 'Courier New', monospace;
+			letter-spacing: 24px;
+			font-style: normal;
+			font-variant: normal;
+			background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 50%, rgba(100, 150, 255, 0.06) 100%);
+			padding: 40px 80px;
+			border-radius: 28px;
+			border: 1px solid rgba(255, 255, 255, 0.25);
+			box-shadow:
+				0 0 60px rgba(100, 150, 255, 0.3),
+				0 20px 50px rgba(0, 0, 0, 0.4),
+				inset 0 1px 2px rgba(255, 255, 255, 0.3),
+				inset 0 -2px 8px rgba(0, 0, 0, 0.2);
+			backdrop-filter: blur(20px);
+			transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+			position: relative;
+			overflow: hidden;
+		}
+
+		.timer-display::before {
+			content: '';
+			position: absolute;
+			top: 0;
+			left: -100%;
+			width: 100%;
+			height: 100%;
+			background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+			animation: shimmer 3s infinite;
+			pointer-events: none;
+		}
+
+		@keyframes shimmer {
+			0% { left: -100%; }
+			100% { left: 100%; }
 		}
 
 		.timer-display.warning {
-			color: #e74c3c;
-			animation: pulse-timer 1s infinite;
+			color: #ff8a8a;
+			animation: pulse-timer 0.8s infinite;
+			text-shadow:
+				0 0 40px rgba(255, 100, 100, 0.6),
+				0 0 80px rgba(255, 100, 100, 0.4),
+				0 8px 16px rgba(0, 0, 0, 0.4);
+			border-color: rgba(255, 100, 100, 0.4);
+			background: linear-gradient(135deg, rgba(255, 100, 100, 0.12) 0%, rgba(255, 100, 100, 0.04) 50%, rgba(255, 80, 80, 0.08) 100%);
+			box-shadow:
+				0 0 60px rgba(255, 100, 100, 0.4),
+				0 20px 50px rgba(255, 50, 50, 0.15),
+				inset 0 1px 2px rgba(255, 255, 255, 0.2),
+				inset 0 -2px 8px rgba(255, 0, 0, 0.1);
 		}
 
 		@keyframes pulse-timer {
 			0%, 100% { opacity: 1; transform: scale(1); }
-			50% { opacity: 0.8; transform: scale(1.05); }
+			50% { opacity: 0.85; transform: scale(1.03); }
 		}
 
 		.timer-controls {
 			display: flex;
-			gap: 15px;
+			gap: 16px;
 			align-items: center;
+			justify-content: flex-start;
 		}
 
 		.timer-btn {
-			padding: 12px 24px;
-			font-size: 16px;
+			padding: 12px 26px;
+			font-size: 15px;
 			font-weight: 600;
-			border: 2px solid rgba(255, 255, 255, 0.3);
+			border: 1.5px solid rgba(255, 255, 255, 0.3);
 			border-radius: 8px;
 			background: rgba(255, 255, 255, 0.1);
 			color: white;
@@ -282,37 +409,144 @@
 
 		.segment-controls {
 			display: flex;
-			gap: 15px;
+			gap: 16px;
 			align-items: center;
+			justify-content: flex-start;
 		}
 
 		/* 主内容区 */
 		.main-content {
-			flex: 1;
+			width: 100%;
 			display: flex;
-			align-items: center;
+			align-items: stretch;
 			justify-content: center;
-			padding: 40px;
+			padding: 0 40px;
 			position: relative;
 		}
 
 		/* 票数显示区域 */
 		.votes-display {
 			width: 100%;
-			max-width: 1600px;
+			max-width: 1400px;
 			display: flex;
 			flex-direction: column;
 			align-items: center;
-			gap: 40px;
+			gap: 30px;
+		}
+
+		/* 评委票数区域 */
+		.judges-section {
+			width: 100%;
+			padding: 10px 40px 30px;
+			background: rgba(0, 0, 0, 0.35);
+			backdrop-filter: blur(8px);
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			gap: 24px;
+			border-top: 1px solid rgba(255, 255, 255, 0.12);
+			box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+		}
+
+		.judges-title {
+			font-size: 26px;
+			font-weight: 700;
+			color: white;
+			text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.45);
+			letter-spacing: 2px;
+		}
+
+		.judges-list {
+			width: 100%;
+			max-width: 1200px;
+			display: flex;
+			gap: 24px;
+			align-items: stretch;
+			justify-content: center;
+		}
+
+		.judge-card {
+			flex: 1 1 0;
+			min-width: 220px;
+			background: rgba(255, 255, 255, 0.06);
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			border-radius: 18px;
+			padding: 20px 24px;
+			display: flex;
+			gap: 18px;
+			align-items: center;
+			box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+			transition: transform 0.3s ease, background 0.3s ease;
+		}
+
+		.judge-card:hover {
+			transform: translateY(-6px);
+			background: rgba(255, 255, 255, 0.1);
+		}
+
+		.judge-avatar {
+			width: 88px;
+			height: 88px;
+			border-radius: 50%;
+			border: 3px solid rgba(255, 255, 255, 0.35);
+			background-size: cover;
+			background-position: center;
+			background-repeat: no-repeat;
+			box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+			flex-shrink: 0;
+		}
+
+		.judge-info {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+			color: white;
+			flex: 1;
+		}
+
+		.judge-name {
+			font-size: 20px;
+			font-weight: 700;
+			letter-spacing: 1px;
+		}
+
+		.judge-role {
+			font-size: 14px;
+			color: rgba(255, 255, 255, 0.65);
+			letter-spacing: 0.5px;
+		}
+
+		.judge-votes {
+			margin-top: 6px;
+			display: flex;
+			align-items: baseline;
+			gap: 10px;
+		}
+
+		.judge-votes .label {
+			font-size: 14px;
+			color: rgba(255, 255, 255, 0.7);
+			letter-spacing: 1px;
+		}
+
+		.judge-votes .value {
+			font-size: 32px;
+			font-weight: 800;
+			color: #f5b041;
+			text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.4);
+		}
+
+		.judge-votes .value.updated {
+			animation: numberUpdate 0.5s ease;
 		}
 
 		/* 总票数显示 */
 		.total-votes {
 			text-align: center;
 			background: rgba(0, 0, 0, 0.4);
-			padding: 25px 50px;
-			border-radius: 20px;
-			font-size: 32px;
+			padding: 20px 40px;
+			border-radius: 16px;
+			font-size: 26px;
 			font-weight: 600;
 			backdrop-filter: blur(10px);
 			border: 2px solid rgba(255, 255, 255, 0.2);
@@ -320,14 +554,14 @@
 		}
 
 		.total-label {
-			font-size: 24px;
+			font-size: 20px;
 			opacity: 0.9;
-			margin-right: 15px;
+			margin-right: 12px;
 			color: rgba(255, 255, 255, 0.8);
 		}
 
 		.total-value {
-			font-size: 48px;
+			font-size: 36px;
 			font-weight: 700;
 			color: #f39c12;
 			text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -336,25 +570,25 @@
 		/* 加载状态 */
 		.loading {
 			text-align: center;
-			font-size: 24px;
+			font-size: 20px;
 			color: rgba(255, 255, 255, 0.6);
 		}
 
 		/* 错误状态 */
 		.error {
 			text-align: center;
-			font-size: 24px;
+			font-size: 20px;
 			color: #e74c3c;
-			padding: 40px;
+			padding: 30px;
 		}
 
-		/* 控制面板（右上角，可选） */
+		/* 控制面板（右下角，可选） */
 		.control-panel {
-			position: absolute;
-			top: 20px;
+			position: fixed;
+			bottom: 80px;
 			right: 20px;
 			background: rgba(0, 0, 0, 0.7);
-			padding: 20px;
+			padding: 16px;
 			border-radius: 10px;
 			backdrop-filter: blur(10px);
 			display: none;
@@ -369,25 +603,25 @@
 
 		.control-panel label {
 			display: block;
-			margin-bottom: 10px;
-			font-size: 14px;
+			margin-bottom: 8px;
+			font-size: 12px;
 			color: rgba(255, 255, 255, 0.9);
 		}
 
 		.control-panel .hint {
-			margin-top: 10px;
-			font-size: 12px;
+			margin-top: 8px;
+			font-size: 11px;
 			color: rgba(255, 255, 255, 0.6);
-			line-height: 1.5;
+			line-height: 1.4;
 		}
 
 		.stream-select {
-			padding: 8px 12px;
+			padding: 7px 10px;
 			border: 1px solid rgba(255, 255, 255, 0.3);
 			border-radius: 6px;
 			background: rgba(255, 255, 255, 0.1);
 			color: white;
-			font-size: 14px;
+			font-size: 12px;
 			cursor: pointer;
 		}
 
@@ -396,264 +630,10 @@
 			color: white;
 		}
 
-		/* 评委显示区域 */
-		.judges-section {
-			width: 100%;
-			max-width: 1600px;
-			margin-top: 60px;
-		}
-
-		.judges-title {
-			text-align: center;
-			font-size: 36px;
-			font-weight: 700;
-			color: white;
-			text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-			margin-bottom: 40px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			gap: 15px;
-		}
-
-		.judges-title::before {
-			content: '⭐';
-			font-size: 32px;
-		}
-
-		.judges-title::after {
-			content: '⭐';
-			font-size: 32px;
-		}
-
-		.judges-container {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 30px;
-			justify-items: center;
-		}
-
-		.judge-card {
-			width: 100%;
-			max-width: 280px;
-			background: rgba(255, 255, 255, 0.05);
-			border: 2px solid rgba(255, 255, 255, 0.2);
-			border-radius: 15px;
-			padding: 25px;
-			text-align: center;
-			backdrop-filter: blur(10px);
-			box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-			transition: all 0.3s ease;
-		}
-
-		.judge-card:hover {
-			background: rgba(255, 255, 255, 0.1);
-			border-color: rgba(255, 255, 255, 0.4);
-			transform: translateY(-5px);
-			box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-		}
-
-		.judge-image {
-			width: 150px;
-			height: 150px;
-			border-radius: 50%;
-			margin: 0 auto 20px;
-			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 60px;
-			color: white;
-			box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-			border: 3px solid rgba(255, 255, 255, 0.3);
-			overflow: hidden;
-			background-size: cover;
-			background-position: center;
-		}
-
-		.judge-image img {
-			width: 100%;
-			height: 100%;
-			object-fit: cover;
-		}
-
-		.judge-name {
-			font-size: 22px;
-			font-weight: 600;
-			color: white;
-			margin-bottom: 15px;
-			text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-		}
-
-		.judge-votes-group {
-			display: flex;
-			flex-direction: column;
-			gap: 15px;
-			margin-top: 20px;
-		}
-
-		.judge-vote-item {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			padding: 12px;
-			border-radius: 10px;
-			font-size: 16px;
-			font-weight: 600;
-			text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-		}
-
-		.judge-vote-item.left-vote {
-			background: rgba(231, 76, 60, 0.3);
-			border: 2px solid rgba(231, 76, 60, 0.6);
-			color: #ff7b7b;
-		}
-
-		.judge-vote-item.right-vote {
-			background: rgba(52, 152, 219, 0.3);
-			border: 2px solid rgba(52, 152, 219, 0.6);
-			color: #7dd3fc;
-		}
-
-		.judge-vote-label {
-			font-size: 12px;
-			opacity: 0.8;
-			margin-bottom: 5px;
-		}
-
-		.judge-vote-count {
-			font-size: 28px;
-			font-weight: 700;
-		}
-
-		/* 评委区域响应式设计 */
-		@media (max-width: 1200px) {
-			.judges-container {
-				grid-template-columns: repeat(3, 1fr);
-				gap: 20px;
-			}
-
-			.judge-card {
-				max-width: 200px;
-				padding: 15px;
-			}
-
-			.judge-image {
-				width: 120px;
-				height: 120px;
-				font-size: 48px;
-			}
-
-			.judge-name {
-				font-size: 18px;
-			}
-
-			.judge-vote-count {
-				font-size: 24px;
-			}
-
-			.judges-title {
-				font-size: 28px;
-				margin-bottom: 30px;
-			}
-
-			.judges-title::before,
-			.judges-title::after {
-				font-size: 24px;
-			}
-		}
-
-		@media (max-width: 768px) {
-			.judges-container {
-				grid-template-columns: 1fr;
-				gap: 15px;
-			}
-
-			.judge-card {
-				max-width: 100%;
-				padding: 15px;
-			}
-
-			.judge-image {
-				width: 100px;
-				height: 100px;
-				font-size: 40px;
-			}
-
-			.judge-name {
-				font-size: 16px;
-				margin-bottom: 10px;
-			}
-
-			.judge-vote-item {
-				padding: 10px;
-				font-size: 14px;
-			}
-
-			.judge-vote-count {
-				font-size: 20px;
-			}
-
-			.judges-title {
-				font-size: 24px;
-				margin-bottom: 20px;
-			}
-
-			.judges-title::before,
-			.judges-title::after {
-				font-size: 20px;
-			}
-
-			.judges-section {
-				margin-top: 40px;
-			}
-		}
-
 		/* 响应式设计 */
 		@media (max-width: 1200px) {
 			.header {
-				height: 130px;
-			}
-
-			.header-left,
-			.header-right {
-				gap: 15px;
-			}
-
-			.header-label {
-				font-size: 36px;
-				padding: 6px 20px;
-			}
-
-			.header-vote-value {
-				font-size: 52px;
-			}
-
-			.header-vote-percentage {
-				font-size: 28px;
-			}
-
-			.segment-info {
-				font-size: 40px;
-			}
-
-			.timer-display {
-				font-size: 100px;
-			}
-
-			.timer-btn {
-				padding: 10px 20px;
-				font-size: 14px;
-			}
-		}
-
-		@media (max-width: 768px) {
-			.container {
-				padding-top: 20px;
-			}
-
-			.header {
-				height: 110px;
+				height: 100px;
 			}
 
 			.header-left,
@@ -663,7 +643,7 @@
 
 			.header-label {
 				font-size: 28px;
-				padding: 5px 15px;
+				padding: 5px 16px;
 			}
 
 			.header-vote-value {
@@ -671,21 +651,97 @@
 			}
 
 			.header-vote-percentage {
-				font-size: 24px;
+				font-size: 22px;
 			}
 
 			.timer-section {
-				padding: 20px;
-				gap: 15px;
+				padding: 28px 28px;
+				gap: 18px;
 			}
 
 			.segment-info {
-				font-size: 32px;
+				font-size: 36px;
 			}
 
 			.timer-display {
-				font-size: 80px;
-				letter-spacing: 4px;
+				font-size: 130px;
+				letter-spacing: 20px;
+				padding: 35px 70px;
+			}
+
+			.timer-btn {
+				padding: 10px 22px;
+				font-size: 13px;
+			}
+
+			.timer-wrapper {
+				flex-direction: column;
+				gap: 24px;
+			}
+
+			.timer-actions {
+				align-items: center;
+			}
+
+			.timer-controls,
+			.segment-controls {
+				justify-content: center;
+			}
+
+			.judges-list {
+				gap: 20px;
+			}
+
+			.main-content {
+				padding: 0 24px;
+			}
+
+			.judges-section {
+				padding: 10px 24px 26px;
+			}
+		}
+
+		@media (max-width: 768px) {
+			.container {
+				padding-top: 16px;
+				gap: 16px;
+			}
+
+			.header {
+				height: 90px;
+			}
+
+			.header-left,
+			.header-right {
+				gap: 8px;
+			}
+
+			.header-label {
+				font-size: 24px;
+				padding: 4px 12px;
+			}
+
+			.header-vote-value {
+				font-size: 32px;
+			}
+
+			.header-vote-percentage {
+				font-size: 20px;
+			}
+
+			.timer-section {
+				padding: 16px;
+				gap: 12px;
+			}
+
+			.segment-info {
+				font-size: 30px;
+			}
+
+			.timer-display {
+				font-size: 110px;
+				letter-spacing: 18px;
+				padding: 30px 60px;
 			}
 
 			.timer-controls,
@@ -698,6 +754,46 @@
 				padding: 8px 16px;
 				font-size: 12px;
 			}
+
+			.timer-wrapper {
+				gap: 20px;
+			}
+
+			.timer-actions {
+				width: 100%;
+				align-items: center;
+			}
+
+			.judges-section {
+				padding: 12px 18px 24px;
+				gap: 20px;
+			}
+
+			.main-content {
+				padding: 0 18px;
+			}
+
+			.judges-list {
+				flex-direction: column;
+				align-items: stretch;
+			}
+
+			.judge-card {
+				padding: 18px 20px;
+			}
+
+			.judge-avatar {
+				width: 72px;
+				height: 72px;
+			}
+
+			.judge-name {
+				font-size: 18px;
+			}
+
+			.judge-votes .value {
+				font-size: 28px;
+			}
 		}
 	</style>
 </head>
@@ -708,22 +804,26 @@
 			<!-- 正方区域（左侧红色） -->
 			<div class="header-left" id="header-left" style="width: 50%;">
 				<div class="header-label" id="header-left-label">正方</div>
-				<div class="header-vote-value" id="header-left-votes">0</div>
-				<div class="header-vote-percentage" id="header-left-percentage">50%</div>
-			</div>
-			
-			<!-- 分隔线 -->
-			<div class="header-divider"></div>
-			
-			<!-- 反方区域（右侧蓝色） -->
-			<div class="header-right" id="header-right" style="width: 50%;">
-				<div class="header-label" id="header-right-label">反方</div>
-				<div class="header-vote-value" id="header-right-votes">0</div>
-				<div class="header-vote-percentage" id="header-right-percentage">50%</div>
+				<div class="header-center-content">
+					<div class="header-vote-value" id="header-left-votes">0</div>
+					<div class="header-vote-percentage" id="header-left-percentage">50%</div>
+				</div>
 			</div>
 
-			<!-- 流信息（右上角） -->
-			<div class="stream-info">
+			<!-- 分隔线 -->
+			<div class="header-divider"></div>
+
+			<!-- 反方区域（右侧蓝色） -->
+			<div class="header-right" id="header-right" style="width: 50%;">
+				<div class="header-center-content">
+					<div class="header-vote-value" id="header-right-votes">0</div>
+					<div class="header-vote-percentage" id="header-right-percentage">50%</div>
+				</div>
+				<div class="header-label" id="header-right-label">反方</div>
+			</div>
+
+			<!-- 流信息（右下角） -->
+			<div class="stream-info" id="stream-info-box" onclick="toggleStreamInfo(event)">
 				<span class="status-indicator" id="status-indicator"></span>
 				<span id="stream-name">加载中...</span>
 			</div>
@@ -731,32 +831,38 @@
 
 		<!-- 计时器和环节控制区域 -->
 		<div class="timer-section" id="timer-section">
-			<div class="segment-info" id="segment-info">准备开始</div>
-			<div class="timer-display" id="timer-display">00:00</div>
-			<div class="timer-controls">
-				<button class="timer-btn" id="btn-pause" onclick="toggleTimer()">暂停</button>
-				<button class="timer-btn primary" id="btn-resume" onclick="resumeTimer()" style="display: none;">恢复</button>
-				<button class="timer-btn danger" onclick="resetTimer()">重置</button>
-			</div>
-			<div class="segment-controls">
-				<button class="timer-btn" onclick="previousSegment()" id="btn-prev">上一个环节 (←)</button>
-				<button class="timer-btn primary" onclick="nextSegment()" id="btn-next">下一个环节 (→)</button>
+			<div class="timer-wrapper">
+				<div class="timer-info">
+					<div class="segment-info" id="segment-info">准备开始</div>
+					<div class="timer-display" id="timer-display">00:00</div>
+				</div>
+				<div class="timer-actions" style="display: none;">
+					<div class="timer-controls">
+						<button class="timer-btn" id="btn-pause" onclick="toggleTimer()">暂停</button>
+						<button class="timer-btn primary" id="btn-resume" onclick="resumeTimer()" style="display: none;">恢复</button>
+						<button class="timer-btn danger" onclick="resetTimer()">重置</button>
+					</div>
+					<div class="segment-controls">
+						<button class="timer-btn" onclick="previousSegment()" id="btn-prev">上一个环节 (←)</button>
+						<button class="timer-btn primary" onclick="nextSegment()" id="btn-next">下一个环节 (→)</button>
+					</div>
+				</div>
 			</div>
 		</div>
 
 		<!-- 主内容区 -->
-		<div class="main-content">
-			<div id="loading" class="loading">正在加载票数数据...</div>
+		<div class="main-content" id="main-content" style="display: none;">
 			<div id="error" class="error" style="display: none;"></div>
-			
+
 			<div id="votes-display" class="votes-display" style="display: none;">
-				<!-- 评委显示区域 -->
-				<div class="judges-section" id="judges-section">
-					<div class="judges-title">评委投票</div>
-					<div class="judges-container" id="judges-container">
-						<!-- 评委卡片将动态插入这里 -->
-					</div>
-				</div>
+			</div>
+		</div>
+
+		<!-- 评委票数展示 -->
+		<div class="judges-section" id="judges-section">
+			<div class="judges-title">评委票数</div>
+			<div class="judges-list" id="judges-list">
+				<!-- 由脚本渲染 -->
 			</div>
 		</div>
 
@@ -766,38 +872,10 @@
 			<select id="stream-select" class="stream-select">
 				<option value="">加载中...</option>
 			</select>
-
-			<!-- 评委测试控制 -->
-			<div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.2);">
-				<label style="display: block; margin-bottom: 10px; font-weight: bold; color: #f39c12;">评委投票测试：</label>
-
-				<div style="font-size: 12px; margin-bottom: 10px; color: rgba(255, 255, 255, 0.7);">
-					评委一:
-					<button onclick="updateJudgeVote(1, 'left')" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">赞成</button>
-					<button onclick="updateJudgeVote(1, 'right')" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">反对</button>
-					<button onclick="updateJudgeVote(1, null)" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">清除</button>
-				</div>
-
-				<div style="font-size: 12px; margin-bottom: 10px; color: rgba(255, 255, 255, 0.7);">
-					评委二:
-					<button onclick="updateJudgeVote(2, 'left')" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">赞成</button>
-					<button onclick="updateJudgeVote(2, 'right')" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">反对</button>
-					<button onclick="updateJudgeVote(2, null)" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">清除</button>
-				</div>
-
-				<div style="font-size: 12px; margin-bottom: 10px; color: rgba(255, 255, 255, 0.7);">
-					评委三:
-					<button onclick="updateJudgeVote(3, 'left')" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">赞成</button>
-					<button onclick="updateJudgeVote(3, 'right')" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">反对</button>
-					<button onclick="updateJudgeVote(3, null)" style="padding: 4px 8px; margin: 0 2px; font-size: 11px;">清除</button>
-				</div>
-			</div>
-
 			<div class="hint">
 				提示：<br>
-				• 按 F12 或点击右上角流信息可显示/隐藏此面板<br>
-				• 可通过URL参数指定流：?stream_id=xxx<br>
-				• 使用评委投票测试按钮可快速测试评委投票功能
+				• 按 F12 或点击右下角流信息可显示/隐藏此面板<br>
+				• 可通过URL参数指定流：?stream_id=xxx
 			</div>
 		</div>
 	</div>
@@ -808,35 +886,13 @@
 			if (window.SERVER_CONFIG && window.SERVER_CONFIG.BASE_URL) {
 				return window.SERVER_CONFIG.BASE_URL;
 			}
-			return 'http://192.140.160.119:8000';
+			return 'http://localhost:8081';
 		};
 
 		// 全局状态
 		let currentStreamId = null;
 		let refreshTimer = null;
 		let ws = null;
-
-		// 评委数据管理
-		let judgesData = [
-			{
-				id: 1,
-				name: '评委一',
-				imageUrl: null,  // 可以是图片URL或base64
-				vote: null  // 'left' 或 'right' 或 null
-			},
-			{
-				id: 2,
-				name: '评委二',
-				imageUrl: null,
-				vote: null
-			},
-			{
-				id: 3,
-				name: '评委三',
-				imageUrl: null,
-				vote: null
-			}
-		];
 
 		// 辩论流程配置
 		const DEBATE_SEGMENTS = [
@@ -858,90 +914,48 @@
 			timerInterval: null
 		};
 
+		// 评委默认数据（后续可接入后台）
+		const DEFAULT_JUDGES = [
+			{
+				id: 'judge-1',
+				name: '评委一',
+				role: '主评委',
+				avatar: './assets/images/judges/osmanthus.jpg',
+				votes: 0
+			},
+			{
+				id: 'judge-2',
+				name: '评委二',
+				role: '嘉宾评委',
+				avatar: './assets/images/judges/osmanthus.jpg',
+				votes: 0
+			},
+			{
+				id: 'judge-3',
+				name: '评委三',
+				role: '嘉宾评委',
+				avatar: './assets/images/judges/osmanthus.jpg',
+				votes: 0
+			}
+		];
+
+		let judgeState = [...DEFAULT_JUDGES];
+
+		// 切换流信息显示/隐藏
+		function toggleStreamInfo(event) {
+			event.stopPropagation();
+			const box = document.getElementById('stream-info-box');
+			if (box.classList.contains('collapsed')) {
+				box.classList.remove('collapsed');
+			} else {
+				box.classList.add('collapsed');
+			}
+		}
+
 		// 从URL参数获取stream_id
 		function getStreamIdFromURL() {
 			const params = new URLSearchParams(window.location.search);
 			return params.get('stream_id') || params.get('streamId');
-		}
-
-		// 渲染评委卡片
-		function renderJudgesCards() {
-			const container = document.getElementById('judges-container');
-			container.innerHTML = '';
-
-			judgesData.forEach((judge) => {
-				const card = document.createElement('div');
-				card.className = 'judge-card';
-
-				// 构建图片HTML
-				let imageHTML;
-				if (judge.imageUrl) {
-					imageHTML = `<img src="${judge.imageUrl}" alt="${judge.name}">`;
-				} else {
-					// 显示默认占位符（一个简单的数字）
-					imageHTML = `${judge.id}`;
-				}
-
-				// 构建投票显示部分
-				let voteHTML = '';
-				if (judge.vote) {
-					const isLeftVote = judge.vote === 'left';
-					const voteLabel = isLeftVote ? '正方' : '反方';
-					const voteClass = isLeftVote ? 'left-vote' : 'right-vote';
-					voteHTML = `
-						<div class="judge-votes-group">
-							<div class="judge-vote-item ${voteClass}">
-								<span class="judge-vote-label">投票：${voteLabel}</span>
-								<span class="judge-vote-count">✓</span>
-							</div>
-						</div>
-					`;
-				} else {
-					voteHTML = `
-						<div class="judge-votes-group">
-							<div class="judge-vote-item" style="background: rgba(128, 128, 128, 0.2); border-color: rgba(128, 128, 128, 0.4); color: #a0a0a0;">
-								<span class="judge-vote-label">未投票</span>
-								<span class="judge-vote-count">—</span>
-							</div>
-						</div>
-					`;
-				}
-
-				card.innerHTML = `
-					<div class="judge-image">${imageHTML}</div>
-					<div class="judge-name">${judge.name}</div>
-					${voteHTML}
-				`;
-
-				container.appendChild(card);
-			});
-		}
-
-		// 更新评委投票（供外部调用）
-		function updateJudgeVote(judgeId, vote) {
-			const judge = judgesData.find(j => j.id === judgeId);
-			if (judge) {
-				judge.vote = vote; // 'left', 'right', 或 null
-				renderJudgesCards();
-			}
-		}
-
-		// 更新评委图片（供外部调用）
-		function updateJudgeImage(judgeId, imageUrl) {
-			const judge = judgesData.find(j => j.id === judgeId);
-			if (judge) {
-				judge.imageUrl = imageUrl;
-				renderJudgesCards();
-			}
-		}
-
-		// 更新评委名字（供外部调用）
-		function updateJudgeName(judgeId, name) {
-			const judge = judgesData.find(j => j.id === judgeId);
-			if (judge) {
-				judge.name = name;
-				renderJudgesCards();
-			}
 		}
 
 		// 初始化
@@ -984,18 +998,101 @@
 			updateTimerDisplay();
 			updateSegmentInfo();
 
+			// 渲染评委信息
+			renderJudges(judgeState);
+
 			// 加载直播流列表
 			await loadStreamsList();
 
 			// 初始化WebSocket
 			initWebSocket();
 
-			// 初始化评委卡片显示
-			renderJudgesCards();
-
 			// 开始定时刷新
 			startAutoRefresh();
 		});
+
+		// 渲染评委区域
+		function renderJudges(judges) {
+			const listEl = document.getElementById('judges-list');
+			if (!listEl) return;
+
+			listEl.innerHTML = '';
+
+			judges.forEach((judge) => {
+				const card = document.createElement('div');
+				card.className = 'judge-card';
+				card.setAttribute('data-judge-id', judge.id);
+
+				const avatar = document.createElement('div');
+				avatar.className = 'judge-avatar';
+				if (judge.avatar) {
+					avatar.style.backgroundImage = `url('${judge.avatar}')`;
+				} else {
+					avatar.style.backgroundImage = `linear-gradient(135deg, #666, #444)`;
+				}
+
+				const info = document.createElement('div');
+				info.className = 'judge-info';
+
+				const nameEl = document.createElement('div');
+				nameEl.className = 'judge-name';
+				nameEl.textContent = judge.name;
+
+				const roleEl = document.createElement('div');
+				roleEl.className = 'judge-role';
+				roleEl.textContent = judge.role || '';
+
+				const votesWrap = document.createElement('div');
+				votesWrap.className = 'judge-votes';
+
+				const label = document.createElement('span');
+				label.className = 'label';
+				label.textContent = '票数';
+
+				const value = document.createElement('span');
+				value.className = 'value';
+				value.id = `${judge.id}-votes`;
+				value.textContent = judge.votes ?? 0;
+
+				votesWrap.appendChild(label);
+				votesWrap.appendChild(value);
+
+				info.appendChild(nameEl);
+				if (judge.role) {
+					info.appendChild(roleEl);
+				}
+				info.appendChild(votesWrap);
+
+				card.appendChild(avatar);
+				card.appendChild(info);
+
+				listEl.appendChild(card);
+			});
+		}
+
+		// 更新单个评委票数
+		function updateJudgeVotes(judgeId, votes) {
+			const judge = judgeState.find(item => item.id === judgeId);
+			if (!judge) return;
+			judge.votes = Math.max(0, Number(votes) || 0);
+
+			const valueEl = document.getElementById(`${judgeId}-votes`);
+			if (valueEl) {
+				valueEl.textContent = judge.votes;
+				valueEl.classList.add('updated');
+				setTimeout(() => valueEl.classList.remove('updated'), 600);
+			}
+		}
+
+		// 批量更新评委信息
+		function setJudges(data = []) {
+			if (!Array.isArray(data) || data.length === 0) return;
+			judgeState = data.map((item, idx) => ({
+				...DEFAULT_JUDGES[idx],
+				...item
+			}));
+			renderJudges(judgeState);
+		}
 
 		// 格式化时间显示（MM:SS）
 		function formatTime(seconds) {
@@ -1008,7 +1105,7 @@
 		function updateTimerDisplay() {
 			const timerEl = document.getElementById('timer-display');
 			timerEl.textContent = formatTime(timerState.remainingSeconds);
-			
+
 			// 剩余时间少于30秒时显示警告
 			if (timerState.remainingSeconds <= 30 && timerState.remainingSeconds > 0) {
 				timerEl.classList.add('warning');
@@ -1022,7 +1119,7 @@
 			const segmentInfoEl = document.getElementById('segment-info');
 			const btnPrev = document.getElementById('btn-prev');
 			const btnNext = document.getElementById('btn-next');
-			
+
 			if (timerState.currentSegmentIndex === -1) {
 				segmentInfoEl.textContent = '准备开始';
 				btnPrev.disabled = true;
@@ -1035,7 +1132,6 @@
 				const segment = DEBATE_SEGMENTS[timerState.currentSegmentIndex];
 				segmentInfoEl.textContent = segment.name;
 				btnPrev.disabled = false;
-				// 如果是最后一个环节，下一个按钮仍然可用（会进入结束状态）
 				btnNext.disabled = false;
 			}
 		}
@@ -1045,26 +1141,25 @@
 			if (timerState.timerInterval) {
 				clearInterval(timerState.timerInterval);
 			}
-			
+
 			timerState.isRunning = true;
 			timerState.isPaused = false;
-			
+
 			timerState.timerInterval = setInterval(() => {
 				if (timerState.remainingSeconds > 0) {
 					timerState.remainingSeconds--;
 					updateTimerDisplay();
-					
+
 					// 时间到
 					if (timerState.remainingSeconds === 0) {
 						stopTimer();
-						// 可以添加提示音或通知
 						console.log('时间到！');
 					}
 				} else {
 					stopTimer();
 				}
 			}, 1000);
-			
+
 			updateButtonStates();
 		}
 
@@ -1115,7 +1210,7 @@
 		function updateButtonStates() {
 			const btnPause = document.getElementById('btn-pause');
 			const btnResume = document.getElementById('btn-resume');
-			
+
 			if (timerState.isRunning) {
 				btnPause.style.display = 'inline-block';
 				btnResume.style.display = 'none';
@@ -1131,30 +1226,28 @@
 		// 切换到下一个环节
 		function nextSegment() {
 			stopTimer();
-			
+
 			if (timerState.currentSegmentIndex < DEBATE_SEGMENTS.length - 1) {
 				timerState.currentSegmentIndex++;
 				const segment = DEBATE_SEGMENTS[timerState.currentSegmentIndex];
 				timerState.remainingSeconds = segment.duration;
 				timerState.isPaused = false;
-				
+
 				updateTimerDisplay();
 				updateSegmentInfo();
 				updateButtonStates();
 			} else if (timerState.currentSegmentIndex === DEBATE_SEGMENTS.length - 1) {
-				// 最后一个环节，切换到结束状态
 				timerState.currentSegmentIndex = DEBATE_SEGMENTS.length;
 				timerState.remainingSeconds = 0;
 				updateTimerDisplay();
 				updateSegmentInfo();
 				updateButtonStates();
 			} else if (timerState.currentSegmentIndex === -1) {
-				// 从准备开始状态进入第一个环节
 				timerState.currentSegmentIndex = 0;
 				const segment = DEBATE_SEGMENTS[0];
 				timerState.remainingSeconds = segment.duration;
 				timerState.isPaused = false;
-				
+
 				updateTimerDisplay();
 				updateSegmentInfo();
 				updateButtonStates();
@@ -1164,13 +1257,13 @@
 		// 切换到上一个环节
 		function previousSegment() {
 			stopTimer();
-			
+
 			if (timerState.currentSegmentIndex > 0) {
 				timerState.currentSegmentIndex--;
 				const segment = DEBATE_SEGMENTS[timerState.currentSegmentIndex];
 				timerState.remainingSeconds = segment.duration;
 				timerState.isPaused = false;
-				
+
 				updateTimerDisplay();
 				updateSegmentInfo();
 				updateButtonStates();
@@ -1188,15 +1281,14 @@
 			try {
 				const response = await fetch(`${getAPIBase()}/api/v1/admin/streams`);
 				const result = await response.json();
-				
+
 				const streams = result?.data?.streams || result?.streams || (Array.isArray(result) ? result : []);
 				const select = document.getElementById('stream-select');
-				
+
 				select.innerHTML = '<option value="">请选择直播流</option>';
-				
+
 				if (streams.length === 0) {
 					select.innerHTML += '<option value="" disabled>暂无可用的直播流</option>';
-					showError('暂无可用的直播流，请先在后台管理系统中添加直播流');
 					return;
 				}
 
@@ -1209,22 +1301,17 @@
 					}
 				});
 
-				// 优先使用URL参数中的stream_id
 				const urlStreamId = getStreamIdFromURL();
 				let selectedStreamId = null;
 
 				if (urlStreamId) {
-					// 检查URL中的stream_id是否在列表中
 					const urlStream = streams.find(s => s.id === urlStreamId && s.enabled);
 					if (urlStream) {
 						selectedStreamId = urlStreamId;
 						select.value = urlStreamId;
-					} else {
-						console.warn('URL中的stream_id不存在或未启用，使用默认流');
 					}
 				}
 
-				// 如果没有从URL获取到，使用第一个启用的流
 				if (!selectedStreamId) {
 					const firstEnabled = streams.find(s => s.enabled);
 					if (firstEnabled) {
@@ -1233,20 +1320,15 @@
 					}
 				}
 
-				// 加载票数
 				if (selectedStreamId) {
 					currentStreamId = selectedStreamId;
 					await loadVotes(selectedStreamId);
-				} else {
-					showError('没有可用的直播流');
 				}
 
-				// 监听选择变化
 				select.addEventListener('change', async (e) => {
 					const streamId = e.target.value;
 					if (streamId) {
 						currentStreamId = streamId;
-						// 更新URL参数（不刷新页面）
 						const url = new URL(window.location);
 						url.searchParams.set('stream_id', streamId);
 						window.history.pushState({}, '', url);
@@ -1255,41 +1337,30 @@
 				});
 			} catch (error) {
 				console.error('加载直播流列表失败:', error);
-				showError('加载直播流列表失败: ' + error.message);
 			}
 		}
 
 		// 加载票数数据
 		async function loadVotes(streamId, showLoadingState = true) {
 			if (!streamId) {
-				showError('请先选择直播流');
 				return;
 			}
 
 			try {
-				hideError();
-				
-				// 只在首次加载或手动切换时显示加载状态
-				if (showLoadingState) {
-					showLoading();
-				}
-
 				const response = await fetch(`${getAPIBase()}/api/v1/admin/dashboard?stream_id=${streamId}`);
 				const result = await response.json();
-				
+
 				const data = result?.data || result;
-				
+
 				if (!data) {
 					throw new Error('无法获取票数数据');
 				}
 
-				// 更新流信息
 				const streamSelect = document.getElementById('stream-select');
 				const selectedOption = streamSelect?.options[streamSelect.selectedIndex];
 				const streamName = selectedOption ? selectedOption.textContent : '未知流';
 				document.getElementById('stream-name').textContent = streamName;
 
-				// 更新状态指示器
 				const statusIndicator = document.getElementById('status-indicator');
 				if (data.isLive) {
 					statusIndicator.classList.add('live');
@@ -1297,7 +1368,6 @@
 					statusIndicator.classList.remove('live');
 				}
 
-				// 更新票数显示
 				const leftVotes = data.leftVotes || 0;
 				const rightVotes = data.rightVotes || 0;
 				const totalVotes = data.totalVotes || (leftVotes + rightVotes);
@@ -1305,20 +1375,8 @@
 				const rightPercentage = data.rightPercentage || (totalVotes > 0 ? Math.round((rightVotes / totalVotes) * 100) : 50);
 
 				updateVotesDisplay(leftVotes, rightVotes, totalVotes, leftPercentage, rightPercentage);
-
-				// 只在首次加载时隐藏加载状态并显示票数
-				if (showLoadingState) {
-					hideLoading();
-					showVotesDisplay();
-				}
 			} catch (error) {
 				console.error('加载票数失败:', error);
-				// 如果已经有数据显示，不显示错误（避免闪烁），只在控制台记录
-				if (showLoadingState) {
-					showError('加载票数失败: ' + error.message);
-				} else {
-					console.warn('定时刷新失败，将在下次重试:', error.message);
-				}
 			}
 		}
 
@@ -1331,11 +1389,9 @@
 			const leftBar = document.getElementById('header-left');
 			const rightBar = document.getElementById('header-right');
 
-			// 获取当前显示的值（去除千分位逗号后比较）
 			const currentLeft = parseInt(leftEl.textContent.replace(/,/g, '')) || 0;
 			const currentRight = parseInt(rightEl.textContent.replace(/,/g, '')) || 0;
 
-			// 检查是否有变化，如果有则添加动画
 			if (currentLeft !== leftVotes) {
 				leftEl.classList.add('updated');
 				setTimeout(() => leftEl.classList.remove('updated'), 500);
@@ -1345,7 +1401,6 @@
 				setTimeout(() => rightEl.classList.remove('updated'), 500);
 			}
 
-			// 更新顶部条状显示的宽度（如果总票数为0，各占50%）
 			if (totalVotes === 0) {
 				leftBar.style.width = '50%';
 				rightBar.style.width = '50%';
@@ -1354,7 +1409,6 @@
 				rightBar.style.width = `${rightPercentage}%`;
 			}
 
-			// 格式化数字（添加千分位）
 			leftEl.textContent = formatNumber(leftVotes);
 			rightEl.textContent = formatNumber(rightVotes);
 			leftPctEl.textContent = `${leftPercentage}%`;
@@ -1414,7 +1468,7 @@
 					const totalVotes = votes.totalVotes || (votes.leftVotes + votes.rightVotes);
 					const leftPercentage = votes.leftPercentage || (totalVotes > 0 ? Math.round((votes.leftVotes / totalVotes) * 100) : 50);
 					const rightPercentage = votes.rightPercentage || (totalVotes > 0 ? Math.round((votes.rightVotes / totalVotes) * 100) : 50);
-					
+
 					updateVotesDisplay(votes.leftVotes, votes.rightVotes, totalVotes, leftPercentage, rightPercentage);
 				}
 			}
@@ -1425,11 +1479,9 @@
 			if (refreshTimer) {
 				clearInterval(refreshTimer);
 			}
-			
-			// 每5秒刷新一次（静默更新，不显示加载状态）
+
 			refreshTimer = setInterval(() => {
 				if (currentStreamId) {
-					// 传入 false 表示不显示加载状态，避免页面闪烁
 					loadVotes(currentStreamId, false);
 				}
 			}, 5000);
@@ -1437,30 +1489,24 @@
 
 		// 显示/隐藏函数
 		function showLoading() {
-			document.getElementById('loading').style.display = 'block';
-			document.getElementById('error').style.display = 'none';
-			document.getElementById('votes-display').style.display = 'none';
+			const mainContent = document.getElementById('main-content');
+			if (mainContent) {
+				mainContent.style.display = 'none';
+			}
 		}
 
 		function hideLoading() {
-			document.getElementById('loading').style.display = 'none';
+			// no-op
 		}
 
 		function showError(message) {
 			document.getElementById('error').textContent = message;
 			document.getElementById('error').style.display = 'block';
-			document.getElementById('loading').style.display = 'none';
-			document.getElementById('votes-display').style.display = 'none';
 		}
 
 		function hideError() {
 			document.getElementById('error').style.display = 'none';
 		}
-
-		function showVotesDisplay() {
-			document.getElementById('votes-display').style.display = 'flex';
-		}
 	</script>
 </body>
 </html>
-
