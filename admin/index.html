@@ -63,6 +63,10 @@
 					<img src="/static/iconfont/toupiao.png" class="nav-icon-img" alt="">
 					<span class="nav-text">票数管理</span>
 				</a>
+				<a href="#judges" class="nav-item" data-page="judges">
+					<img src="/static/iconfont/blue-user.png" class="nav-icon-img" alt="">
+					<span class="nav-text">评委管理</span>
+				</a>
 				<a href="#ai-content" class="nav-item" data-page="ai-content">
 					<img src="/static/iconfont/gongjigongju.png" class="nav-icon-img" alt="">
 					<span class="nav-text">AI 内容管理</span>
@@ -499,6 +503,197 @@
 					</div>
 				</div>
 
+				<!-- 评委管理页 -->
+				<div id="judges" class="page">
+					<div class="page-header">
+						<h2>
+							<img src="/static/iconfont/blue-user.png" class="icon-img" alt="">
+							评委管理
+						</h2>
+						<a href="/admin/vote-display.html" target="_blank" class="btn btn-primary" style="display: flex; align-items: center; gap: 6px; text-decoration: none;">
+							<img src="/static/iconfont/zhibo.png" class="icon-img-sm" style="filter: brightness(0) invert(1);" alt="">
+							查看大屏幕
+						</a>
+					</div>
+
+					<!-- 直播流选择器 -->
+					<div style="background: #d1ecf1; padding: 20px; border-radius: 8px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #3498db; border: 1px solid #bee5eb;">
+						<div class="form-group" style="margin: 0;">
+							<label style="display: block; margin-bottom: 10px; color: #0c5460; font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 8px;">
+								<img src="/static/iconfont/live.png" class="icon-img" alt="">
+								选择直播流
+								<span style="color: #e74c3c; margin-left: 5px;">*</span>
+							</label>
+							<div style="display: flex; gap: 10px; align-items: center;">
+								<select id="judges-stream-select" class="form-select" style="flex: 1; padding: 12px; font-size: 14px;">
+									<option value="">请选择要管理的直播流</option>
+								</select>
+								<button class="btn btn-secondary btn-sm" id="judges-refresh-streams-btn" style="padding: 12px 20px; display: flex; align-items: center; gap: 6px;">
+									<img src="/static/iconfont/shuaxin.png" class="icon-img-sm" alt="">
+									刷新列表
+								</button>
+							</div>
+							<div id="judges-current-stream-info" style="margin-top: 12px; padding: 10px; background: rgba(52, 152, 219, 0.1); border-radius: 6px; font-size: 13px; color: #0c5460; display: none;">
+								<span style="font-weight: 600;">当前管理：</span>
+								<span id="judges-current-stream-name">-</span>
+							</div>
+							<div style="margin-top: 8px; font-size: 13px; color: #6c757d; display: flex; align-items: center; gap: 6px;">
+								<span class="iconfont icon-tip" style="font-size: 16px;"></span>
+								提示：每个直播流可以设置独立的评委信息
+							</div>
+						</div>
+					</div>
+
+					<!-- 当前评委展示 -->
+					<div style="background: white; padding: 25px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e9ecef;">
+						<h3 style="margin: 0 0 20px 0; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
+							<img src="/static/iconfont/blue-user.png" class="icon-img" alt="">
+							当前评委设置
+						</h3>
+
+						<div id="judges-cards-container" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;">
+							<!-- 评委1 -->
+							<div class="judge-edit-card" data-judge-index="0" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
+								<div style="text-align: center; margin-bottom: 15px;">
+									<h4 style="margin: 0 0 10px 0; color: #495057;">评委一</h4>
+									<div class="judge-avatar-preview" style="width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; border: 3px solid #e9ecef; background-size: cover; background-position: center; background-image: url('./assets/images/judges/osmanthus.jpg'); background-color: #f5f5f5; position: relative; overflow: hidden; cursor: pointer;">
+										<div class="avatar-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; color: white; font-size: 12px;">
+											点击上传
+										</div>
+									</div>
+								</div>
+								<div class="form-group">
+									<label>姓名</label>
+									<input type="text" class="form-input judge-name-input" placeholder="请输入评委姓名" value="评委一">
+								</div>
+								<div class="form-group">
+									<label>职位</label>
+									<input type="text" class="form-input judge-role-input" placeholder="请输入职位" value="主评委">
+								</div>
+								<div class="form-group">
+									<label>头像</label>
+									<div style="display: flex; gap: 10px;">
+										<input type="file" class="judge-avatar-upload" accept="image/*" style="display: none;">
+										<button class="btn btn-secondary btn-sm upload-avatar-btn" style="flex: 1;">
+											<span class="iconfont icon-upload" style="margin-right: 4px;"></span>
+											上传头像
+										</button>
+										<button class="btn btn-info btn-sm select-from-users-btn" style="flex: 1;">
+											<span class="iconfont icon-user" style="margin-right: 4px;"></span>
+											从用户选择
+										</button>
+									</div>
+								</div>
+								<div class="form-group">
+									<label>票数</label>
+									<input type="number" class="form-input judge-votes-input" placeholder="当前票数" value="0" min="0">
+								</div>
+							</div>
+
+							<!-- 评委2 -->
+							<div class="judge-edit-card" data-judge-index="1" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
+								<div style="text-align: center; margin-bottom: 15px;">
+									<h4 style="margin: 0 0 10px 0; color: #495057;">评委二</h4>
+									<div class="judge-avatar-preview" style="width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; border: 3px solid #e9ecef; background-size: cover; background-position: center; background-image: url('./assets/images/judges/osmanthus.jpg'); background-color: #f5f5f5; position: relative; overflow: hidden; cursor: pointer;">
+										<div class="avatar-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; color: white; font-size: 12px;">
+											点击上传
+										</div>
+									</div>
+								</div>
+								<div class="form-group">
+									<label>姓名</label>
+									<input type="text" class="form-input judge-name-input" placeholder="请输入评委姓名" value="评委二">
+								</div>
+								<div class="form-group">
+									<label>职位</label>
+									<input type="text" class="form-input judge-role-input" placeholder="请输入职位" value="嘉宾评委">
+								</div>
+								<div class="form-group">
+									<label>头像</label>
+									<div style="display: flex; gap: 10px;">
+										<input type="file" class="judge-avatar-upload" accept="image/*" style="display: none;">
+										<button class="btn btn-secondary btn-sm upload-avatar-btn" style="flex: 1;">
+											<span class="iconfont icon-upload" style="margin-right: 4px;"></span>
+											上传头像
+										</button>
+										<button class="btn btn-info btn-sm select-from-users-btn" style="flex: 1;">
+											<span class="iconfont icon-user" style="margin-right: 4px;"></span>
+											从用户选择
+										</button>
+									</div>
+								</div>
+								<div class="form-group">
+									<label>票数</label>
+									<input type="number" class="form-input judge-votes-input" placeholder="当前票数" value="0" min="0">
+								</div>
+							</div>
+
+							<!-- 评委3 -->
+							<div class="judge-edit-card" data-judge-index="2" style="background: #f8f9fa; padding: 20px; border-radius: 8px; border: 1px solid #e9ecef;">
+								<div style="text-align: center; margin-bottom: 15px;">
+									<h4 style="margin: 0 0 10px 0; color: #495057;">评委三</h4>
+									<div class="judge-avatar-preview" style="width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; border: 3px solid #e9ecef; background-size: cover; background-position: center; background-image: url('./assets/images/judges/osmanthus.jpg'); background-color: #f5f5f5; position: relative; overflow: hidden; cursor: pointer;">
+										<div class="avatar-overlay" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; color: white; font-size: 12px;">
+											点击上传
+										</div>
+									</div>
+								</div>
+								<div class="form-group">
+									<label>姓名</label>
+									<input type="text" class="form-input judge-name-input" placeholder="请输入评委姓名" value="评委三">
+								</div>
+								<div class="form-group">
+									<label>职位</label>
+									<input type="text" class="form-input judge-role-input" placeholder="请输入职位" value="嘉宾评委">
+								</div>
+								<div class="form-group">
+									<label>头像</label>
+									<div style="display: flex; gap: 10px;">
+										<input type="file" class="judge-avatar-upload" accept="image/*" style="display: none;">
+										<button class="btn btn-secondary btn-sm upload-avatar-btn" style="flex: 1;">
+											<span class="iconfont icon-upload" style="margin-right: 4px;"></span>
+											上传头像
+										</button>
+										<button class="btn btn-info btn-sm select-from-users-btn" style="flex: 1;">
+											<span class="iconfont icon-user" style="margin-right: 4px;"></span>
+											从用户选择
+										</button>
+									</div>
+								</div>
+								<div class="form-group">
+									<label>票数</label>
+									<input type="number" class="form-input judge-votes-input" placeholder="当前票数" value="0" min="0">
+								</div>
+							</div>
+						</div>
+
+						<!-- 保存按钮 -->
+						<div style="margin-top: 30px; text-align: center;">
+							<button class="btn btn-success" id="save-judges-btn" style="padding: 12px 40px; font-size: 16px; display: inline-flex; align-items: center; gap: 8px;">
+								<span class="iconfont icon-check" style="font-size: 18px;"></span>
+								保存评委信息
+							</button>
+						</div>
+					</div>
+
+					<!-- 使用说明 -->
+					<div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107;">
+						<h4 style="margin: 0 0 10px 0; color: #856404; display: flex; align-items: center; gap: 8px;">
+							<span class="iconfont icon-help" style="font-size: 18px;"></span>
+							使用说明
+						</h4>
+						<div style="color: #856404; font-size: 14px; line-height: 1.8;">
+							<ul style="margin: 10px 0; padding-left: 20px;">
+								<li>为每个评委设置姓名、职位和头像</li>
+								<li>可以直接上传图片作为头像，或从已有用户中选择</li>
+								<li>评委票数可以手动设置，也会实时同步观众投票</li>
+								<li>保存后将同步更新到大屏幕显示页面</li>
+								<li>每个直播流可以设置不同的评委信息</li>
+							</ul>
+						</div>
+					</div>
+				</div>
+
 				<!-- AI 内容管理页 -->
 				<div id="ai-content" class="page">
 					<div class="page-header">
@@ -812,14 +1007,40 @@
 		</div>
 	</div>
 
+	<!-- 选择用户作为评委的弹窗 -->
+	<div id="select-user-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 10000; align-items: center; justify-content: center;">
+		<div style="background: white; border-radius: 12px; max-width: 800px; width: 90%; max-height: 80vh; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.3);">
+			<div style="padding: 20px; border-bottom: 1px solid #e9ecef; display: flex; justify-content: space-between; align-items: center;">
+				<h3 style="margin: 0; color: #2c3e50; display: flex; align-items: center; gap: 8px;">
+					<img src="/static/iconfont/blue-user.png" class="icon-img" alt="">
+					选择用户作为评委
+				</h3>
+				<button id="close-user-modal" style="background: none; border: none; font-size: 28px; color: #95a5a6; cursor: pointer; line-height: 1; padding: 0; width: 30px; height: 30px;">&times;</button>
+			</div>
+			<div style="padding: 20px;">
+				<div class="form-group">
+					<label>搜索用户</label>
+					<input type="text" id="modal-user-search" class="form-input" placeholder="输入用户昵称或ID搜索...">
+				</div>
+				<div id="modal-users-list" style="max-height: 400px; overflow-y: auto; margin-top: 15px;">
+					<div style="text-align: center; padding: 40px; color: #999;">
+						加载用户列表中...
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<script src="/admin/admin-api.js?v=2"></script>
 	<script src="/admin/admin.js?v=2"></script>
 	<script src="/admin/admin-events.js?v=2"></script>
 	<script src="/admin/stream-management.js?v=2"></script>
+	<script src="/admin/judges-management.js?v=1"></script>
 	<script>
 		// 初始化直播流管理模块
 		document.addEventListener('DOMContentLoaded', () => {
 			initStreamManagement();
+			initJudgesManagement();
 		});
 	</script>
 </body>
