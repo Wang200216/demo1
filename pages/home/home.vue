@@ -225,7 +225,7 @@
 				<!-- 预设观点滑块（直播前显示，直播开始后可通过按钮控制显示） -->
 				<view class="preset-section" v-if="showPresetSlider && (!isLiveStarted || (isLiveStarted && showPresetPanel))">
 					<view class="preset-header">
-						<text class="preset-title">🎯 预设观点倾向</text>
+						<text class="preset-title">预设观点倾向</text>
 						<!-- 直播开始后的关闭按钮 -->
 						<view class="preset-close-btn" v-if="isLiveStarted" @click="togglePresetPanel">
 							<text class="close-icon">✕</text>
@@ -812,6 +812,9 @@
 
 			// 页面一进入就获取辩题（关键修正）
 			this.fetchDebateTopic();
+			
+			// 获取用户之前的投票记录（如果用户已登录）
+			this.fetchUserVoteRecord();
 
 			// ================= 初始化直播流地址（从数据库获取） =================
 			// 如果没有流地址，尝试从服务器获取直播流
@@ -2058,24 +2061,23 @@
 					// 调试日志：检查当前使用的服务器地址
 					console.log('📊 获取票数 - 使用服务器:', service.baseURL || service.getCurrentConfig?.()?.baseURL || '未设置');
 					
-					// 🔧 修复：使用 Dashboard API 获取票数（votes API 返回空数据）
-					const response = await service.getDashboard(this.streamId);
+					// 使用 /api/votes 获取票数（展示用）
+                    const response = await service.getVote(this.streamId);
 					
 					console.log('📊 获取票数 - Dashboard API响应:', response);
 					
 					if (response) {
-						// getDashboard 直接返回数据，不包装在 {success, data} 中
 						const data = response;
 						
 						// 🔧 修复：始终使用数据库返回的票数，这是真实数据
 						if (data.leftVotes !== undefined && data.rightVotes !== undefined) {
-							const newLeftVotes = data.leftVotes || 0;
-							const newRightVotes = data.rightVotes || 0;
-							const newTotal = newLeftVotes + newRightVotes;
-							
-							// 直接更新为数据库的真实票数
-							this.topLeftVotes = newLeftVotes;
-							this.topRightVotes = newRightVotes;
+                            const newLeftVotes = data.leftVotes || 0;
+                            const newRightVotes = data.rightVotes || 0;
+                            const newTotal = newLeftVotes + newRightVotes;
+                            
+                            // 按展示规则：在后端返回的累计票数基础上，各自 +50 进行显示
+                            this.topLeftVotes = Math.max(0, newLeftVotes + 50);
+                            this.topRightVotes = Math.max(0, newRightVotes + 50);
 							console.log('✅ 票数更新成功（来自 Dashboard）:', { 
 								left: this.topLeftVotes, 
 								right: this.topRightVotes,
@@ -2088,15 +2090,94 @@
 					} else {
 						console.warn('⚠️ 获取 Dashboard 失败');
 					}
-				} catch (error) {
-					console.error('❌ 获取票数失败:', error);
-					// 🔧 获取失败时不要显示错误提示，避免干扰用户
-					// 只在开发环境显示详细错误
-					if (process.env.NODE_ENV === 'development') {
-						console.error('❌ 获取票数错误详情:', error.message);
-					}
+			} catch (error) {
+				console.error('❌ 获取票数失败:', error);
+				// 🔧 获取失败时不要显示错误提示，避免干扰用户
+				// 只在开发环境显示详细错误
+				if (process.env.NODE_ENV === 'development') {
+					console.error('❌ 获取票数错误详情:', error.message);
 				}
-			},
+			}
+		},
+		
+		// 获取用户之前的投票记录
+		async fetchUserVoteRecord() {
+			try {
+				// 确保 streamId 和 userId 都存在
+				if (!this.streamId) {
+					console.warn('⚠️ 无法获取用户投票记录：缺少 streamId');
+					return;
+				}
+				
+				// 获取当前用户ID
+				let userId = null;
+				try {
+					if (typeof uni !== 'undefined' && uni.getStorageSync) {
+						const currentUser = uni.getStorageSync('currentUser');
+						if (currentUser && currentUser.id) {
+							userId = currentUser.id;
+						}
+					}
+				} catch (e) {
+					console.warn('⚠️ 获取用户ID失败:', e);
+				}
+				
+				if (!userId) {
+					console.log('ℹ️ 用户未登录，跳过获取投票记录');
+					return;
+				}
+				
+				const service = this.apiService || apiService;
+				const userVoteData = await service.getUserVotes(this.streamId);
+				
+				if (userVoteData && userVoteData.success !== false) {
+					const voteData = userVoteData.data || userVoteData;
+					const leftVotes = voteData.leftVotes || 0;
+					const rightVotes = voteData.rightVotes || 0;
+					
+					// 如果用户之前投过票，更新滑块位置和票数显示
+					if (leftVotes > 0 || rightVotes > 0) {
+						const total = leftVotes + rightVotes;
+						if (total > 0) {
+							// 计算预设观点倾向（0-100）
+							this.presetOpinion = Math.round((leftVotes / total) * 100);
+							// 更新本地显示的票数
+							this.leftVotes = leftVotes;
+							this.rightVotes = rightVotes;
+							// 标记已提交过投票
+							this.initialVotesSubmitted = true;
+							console.log('✅ 加载用户之前的投票记录:', {
+								leftVotes,
+								rightVotes,
+								presetOpinion: this.presetOpinion
+							});
+						}
+					} else {
+						// 如果用户之前没有投过票，根据默认的presetOpinion（50%）初始化票数
+						// 确保在50%位置时，leftVotes和rightVotes是50:50，而不是0:0
+						this.leftVotes = Math.round((this.presetOpinion / 100) * 100);
+						this.rightVotes = 100 - this.leftVotes;
+						console.log('ℹ️ 用户之前没有投票记录，根据默认滑块位置初始化:', {
+							presetOpinion: this.presetOpinion,
+							leftVotes: this.leftVotes,
+							rightVotes: this.rightVotes
+						});
+					}
+				} else {
+					// 如果获取失败，也根据默认的presetOpinion初始化
+					this.leftVotes = Math.round((this.presetOpinion / 100) * 100);
+					this.rightVotes = 100 - this.leftVotes;
+					console.log('ℹ️ 获取投票记录失败，根据默认滑块位置初始化:', {
+						presetOpinion: this.presetOpinion,
+						leftVotes: this.leftVotes,
+						rightVotes: this.rightVotes
+					});
+				}
+			} catch (error) {
+				console.error('❌ 获取用户投票记录失败:', error);
+				// 获取失败不影响页面正常使用
+			}
+		},
 
 			async fetchAIContent(isInitialLoad = false) {
 				try {
@@ -2158,7 +2239,7 @@
 				}
 			},
 			
-			async sendUserVote(side, votes = 10) {
+            async sendUserVote(side, votes = 10) {
 				const startTime = Date.now();
 				
 				try {
@@ -2176,8 +2257,11 @@
 					console.log('📤 发送投票请求:', { side, votes, streamId: this.streamId });
 					console.log('📡 API服务器地址:', this.apiService?.baseURL || '未设置');
 					
-					// 传递 streamId 参数（必需）
-					const response = await apiService.userVote(side, votes, this.streamId);
+                    // 统一按分布提交：以当前滑块 presetOpinion 作为分布来源（总和100）
+                    const leftDist = Math.max(0, Math.min(100, Math.round((this.presetOpinion / 100) * 100)));
+                    const rightDist = 100 - leftDist;
+                    const service = this.apiService || apiService;
+                    const response = await service.userVoteDistribution(leftDist, rightDist, this.streamId);
 					
 					// 详细记录响应信息
 					console.log('📥 投票接口响应:', {
@@ -2200,12 +2284,17 @@
 					const isSuccess = response?.success === true || 
 					                 (response?.success === undefined && response !== undefined);
 					
-					if (isSuccess) {
-						console.log('✅ 投票成功:', response?.data || response);
-						// 延迟1秒后获取最新的票数统计（防抖处理）
-						this.debouncedFetchVoteData();
-						return { success: true, data: response?.data || response };
-					} else {
+				if (isSuccess) {
+					console.log('✅ 投票成功:', response?.data || response);
+						// 立即用当前分布更新顶栏，再拉累计校正
+                    this.topLeftVotes = leftDist;
+                    this.topRightVotes = rightDist;
+					// 立即拉取累计票数刷新顶栏
+					this.fetchTopBarVotes();
+					// 同时保留延迟刷新，确保最终一致
+					this.debouncedFetchVoteData();
+					return { success: true, data: response?.data || response };
+				} else {
 						// 如果响应明确表示失败，抛出错误
 						console.warn('⚠️ 投票响应表示失败:', response);
 						const error = new Error(response?.message || '投票失败');
@@ -3361,8 +3450,12 @@
 			async confirmPresetVotes() {
 				if (!this.isLiveStarted) {
 					// 直播开始前：提交初始100票
+					// 根据滑块位置计算票数：50% = 50:50, 60% = 60:40, 0% = 0:100, 100% = 100:0
 					const leftVotes = Math.round((this.presetOpinion / 100) * this.initialVotesTotal);
 					const rightVotes = this.initialVotesTotal - leftVotes;
+					
+					// 确保票数正确（即使滑块在50%位置，也应该发送50:50，而不是0:0）
+					console.log(`📊 [确认投票] 滑块位置: ${this.presetOpinion}%, 计算票数: 正方 ${leftVotes}, 反方 ${rightVotes}`);
 					
 					// 发送到数据库
 					// 服务器要求：leftVotes + rightVotes 必须等于 100
@@ -3380,12 +3473,9 @@
 						}
 						
 						// 发送一次请求，根据哪一方票数更多，决定以哪一方为主
-						let voteResult;
-						if (finalLeftVotes >= finalRightVotes) {
-							voteResult = await this.sendUserVote('left', finalLeftVotes);
-						} else {
-							voteResult = await this.sendUserVote('right', finalRightVotes);
-						}
+						// 直接按当前对比条分布提交（总和为100）
+						const service = this.apiService || apiService;
+						const voteResult = await service.userVoteDistribution(finalLeftVotes, finalRightVotes, this.streamId);
 						
 						// 检查投票结果
 						if (voteResult && voteResult.success !== false) {
@@ -3400,9 +3490,13 @@
 								this.showPresetPanel = false;
 							}
 							
-							// 更新本地显示的票数
+							// 更新本地显示与顶栏（立即反映当前用户分布）
 							this.leftVotes = finalLeftVotes;
 							this.rightVotes = finalRightVotes;
+							this.topLeftVotes = finalLeftVotes;
+							this.topRightVotes = finalRightVotes;
+							// 拉累计值校正为全局总票数
+							this.fetchTopBarVotes();
 							
 							uni.showToast({
 								title: '✅ 初始投票已提交',
@@ -3422,18 +3516,17 @@
 					}
 				} else {
 					// 直播开始后：提交拖动进度条后的票数变化
-					const currentTotal = this.leftVotes + this.rightVotes;
-					if (currentTotal === 0) {
-						uni.showToast({
-							title: '没有可提交的票数',
-							icon: 'none'
-						});
-						return;
-					}
-					
-					// 计算需要发送的票数变化
+					// 如果 leftVotes 和 rightVotes 为 0，根据 presetOpinion 计算票数
 					let leftVotes = this.leftVotes;
 					let rightVotes = this.rightVotes;
+					const currentTotal = leftVotes + rightVotes;
+					
+					if (currentTotal === 0) {
+						// 如果票数为0，根据滑块位置计算票数（默认50% = 50:50）
+						leftVotes = Math.round((this.presetOpinion / 100) * 100);
+						rightVotes = 100 - leftVotes;
+						console.log(`📊 [直播后确认投票] 票数为0，根据滑块位置计算: ${this.presetOpinion}% -> 正方 ${leftVotes}, 反方 ${rightVotes}`);
+					}
 					
 					// 服务器要求：leftVotes + rightVotes 必须等于 100
 					// 只需要发送一次请求，包含双方的票数
@@ -3449,18 +3542,20 @@
 						
 					// 发送一次请求，包含双方的票数（总和为100）
 					// 根据哪一方票数更多，决定以哪一方为主
-					let voteResult;
-					if (leftVotes >= rightVotes) {
-						voteResult = await this.sendUserVote('left', leftVotes);
-					} else {
-						voteResult = await this.sendUserVote('right', rightVotes);
-					}
+					// 直接按当前对比条分布提交（总和为100）
+					const service = this.apiService || apiService;
+					const voteResult = await service.userVoteDistribution(leftVotes, rightVotes, this.streamId);
 					
 					// 检查投票结果
-					if (voteResult && voteResult.success !== false) {
-						// 清除变化标记
-						this.presetSliderChanged = false;
-						this.votesChanged = false;
+						if (voteResult && voteResult.success !== false) {
+							// 清除变化标记
+							this.presetSliderChanged = false;
+							this.votesChanged = false;
+							// 立即反映当前用户分布到顶栏
+							this.topLeftVotes = leftVotes;
+							this.topRightVotes = rightVotes;
+							// 再拉累计校正
+							this.fetchTopBarVotes();
 						
 						uni.showToast({
 							title: '✅ 投票已更新',
@@ -4389,16 +4484,26 @@
 				if (streamId === currentStreamId || streamId === null) {
 					console.log('✅ 应用WebSocket票数更新到当前直播间');
 					
-					// 更新顶部对抗条的票数（只有在有有效数据时才更新）
-					if (data.leftVotes !== undefined && data.rightVotes !== undefined) {
-						this.topLeftVotes = data.leftVotes || 0;
-						this.topRightVotes = data.rightVotes || 0;
-						console.log('✅ WebSocket票数更新成功:', { 
-							left: this.topLeftVotes, 
-							right: this.topRightVotes,
-							streamId: streamId
-						});
-					}
+						// 更新顶部对抗条：仅在票数为累计值时应用；若为增量（出现负数），改为刷新累计接口
+						if (data.leftVotes !== undefined && data.rightVotes !== undefined) {
+							const leftVal = Number(data.leftVotes) || 0;
+							const rightVal = Number(data.rightVotes) || 0;
+                            if (leftVal < 0 || rightVal < 0) {
+                                console.warn('⚠️ 收到增量票数（含负数），先本地加和夹取，再拉取累计票数');
+                                this.topLeftVotes = Math.max(0, this.topLeftVotes + leftVal);
+                                this.topRightVotes = Math.max(0, this.topRightVotes + rightVal);
+                                this.debouncedFetchVoteData();
+                            } else {
+                                // 按展示规则：在后端返回的累计票数基础上，各自 +50 进行显示
+                                this.topLeftVotes = Math.max(0, leftVal + 50);
+                                this.topRightVotes = Math.max(0, rightVal + 50);
+                                console.log('✅ WebSocket票数更新成功:', { 
+                                    left: this.topLeftVotes, 
+                                    right: this.topRightVotes,
+                                    streamId: streamId
+                                });
+                            }
+                        }
 					
 					// 更新百分比（如果服务器提供了百分比，直接使用；否则根据票数计算）
 					if (data.leftPercentage !== undefined) {

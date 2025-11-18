@@ -4,6 +4,7 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>票数统计大屏幕</title>
+	<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
 	<style>
 		@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 
@@ -744,6 +745,13 @@
 				font-size: 28px;
 			}
 		}
+
+		.chart-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); display: none; align-items: center; justify-content: center; z-index: 9999; backdrop-filter: blur(10px); }
+		.chart-container { width: 90%; max-width: 1600px; height: 85%; background: rgba(26,35,38,0.95); border-radius: 24px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); border: 2px solid rgba(255,255,255,0.15); position: relative; }
+		.chart-title { font-size: 28px; font-weight: 900; color: white; letter-spacing: 2px; margin-bottom: 20px; }
+		#vote-trend-chart { width: 100%; height: calc(100% - 60px); }
+		.show-chart-btn { position: fixed; bottom: 80px; left: 20px; padding: 12px 24px; font-size: 15px; font-weight: 600; border: 2px solid rgba(52,152,219,0.5); border-radius: 8px; background: rgba(52,152,219,0.15); color: #3498db; cursor: pointer; transition: all 0.3s ease; backdrop-filter: blur(8px); z-index: 1000; display: none; }
+		.show-chart-btn.visible { display: flex; align-items: center; gap: 8px; }
 	</style>
 </head>
 <body>
@@ -829,6 +837,15 @@
 		</div>
 	</div>
 
+	<div class="chart-overlay" id="chart-overlay" onclick="hideVoteTrendChart()">
+		<div class="chart-container" onclick="event.stopPropagation()">
+			<div class="chart-title">双方票数变化趋势</div>
+			<div id="vote-trend-chart"></div>
+		</div>
+	</div>
+
+	<button class="show-chart-btn" id="show-chart-btn">查看票数趋势</button>
+
 	<script>
 		// 服务器配置（从admin.js继承或使用默认值）
 		const getAPIBase = () => {
@@ -842,6 +859,10 @@
 		let currentStreamId = null;
 		let refreshTimer = null;
 		let ws = null;
+		const voteHistory = [];
+		let voteTrendChart = null;
+		let debateStartTime = null;
+		let chartShown = false;
 
 		// 辩论流程配置
 		const DEBATE_SEGMENTS = [
@@ -958,6 +979,8 @@
 
 			// 开始定时刷新
 			startAutoRefresh();
+			const chartBtn = document.getElementById('show-chart-btn');
+			if (chartBtn) { chartBtn.addEventListener('click', () => { showVoteTrendChart(); }); }
 		});
 
 		// 渲染评委区域
@@ -1077,6 +1100,8 @@
 				segmentInfoEl.textContent = '辩论结束';
 				btnPrev.disabled = false;
 				btnNext.disabled = true;
+				const chartBtn = document.getElementById('show-chart-btn');
+				if (chartBtn) { chartBtn.classList.add('visible'); }
 			} else {
 				const segment = DEBATE_SEGMENTS[timerState.currentSegmentIndex];
 				segmentInfoEl.textContent = segment.name;
@@ -1362,6 +1387,9 @@
 			rightEl.textContent = formatNumber(rightVotes);
 			leftPctEl.textContent = `${leftPercentage}%`;
 			rightPctEl.textContent = `${rightPercentage}%`;
+
+			if (voteHistory.length === 0) { debateStartTime = new Date(); }
+			voteHistory.push({ timestamp: new Date(), leftVotes, rightVotes });
 		}
 
 		// 格式化数字（添加千分位）
@@ -1434,6 +1462,45 @@
 					loadVotes(currentStreamId, false);
 				}
 			}, 5000);
+		}
+
+		function initVoteTrendChart() {
+			const dom = document.getElementById('vote-trend-chart');
+			voteTrendChart = echarts.init(dom);
+			updateVoteTrendChart();
+		}
+		function updateVoteTrendChart() {
+			if (!voteTrendChart || voteHistory.length === 0) return;
+			const timeLabels = voteHistory.map(item => {
+				const date = new Date(item.timestamp);
+				const mins = Math.floor((date - debateStartTime) / 1000 / 60);
+				const secs = Math.floor((date - debateStartTime) / 1000) % 60;
+				return `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+			});
+			const leftData = voteHistory.map(item => item.leftVotes);
+			const rightData = voteHistory.map(item => item.rightVotes);
+			const option = {
+				backgroundColor: 'transparent',
+				tooltip: { trigger: 'axis' },
+				legend: { data: ['正方', '反方'], textStyle: { color: '#fff' } },
+				xAxis: { type: 'category', data: timeLabels, axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } }, axisLabel: { color: 'rgba(255,255,255,0.8)' } },
+				yAxis: { type: 'value', axisLine: { lineStyle: { color: 'rgba(255,255,255,0.3)' } }, axisLabel: { color: 'rgba(255,255,255,0.8)' }, splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } } },
+				series: [
+					{ name: '正方', type: 'line', smooth: true, data: leftData },
+					{ name: '反方', type: 'line', smooth: true, data: rightData }
+				]
+			};
+			voteTrendChart.setOption(option);
+		}
+		function showVoteTrendChart() {
+			const overlay = document.getElementById('chart-overlay');
+			overlay.style.display = 'flex';
+			if (!voteTrendChart) initVoteTrendChart(); else updateVoteTrendChart();
+			chartShown = true;
+		}
+		function hideVoteTrendChart() {
+			const overlay = document.getElementById('chart-overlay');
+			overlay.style.display = 'none';
 		}
 
 		// 显示/隐藏函数

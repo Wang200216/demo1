@@ -239,6 +239,14 @@ class ApiService {
     });
   }
 
+  async getVote(streamId = null) {
+    const url = streamId ? `/api/votes?stream_id=${streamId}` : '/api/votes';
+    return await this.request({
+      url,
+      method: 'GET'
+    });
+  }
+
   /**
    * 用户投票
    * @param {string} side - 投票方 ('left' 或 'right')
@@ -329,9 +337,12 @@ class ApiService {
     try {
       // 🔧 后端API期望数据包装在 request 字段中
       // 根据错误信息 "body -> request: Field required"，后端明确需要 request 字段
-      const requestBody = {
-        request: requestData
-      };
+    const requestBody = {
+      request: {
+        ...requestData,
+        stream_id: requestData.streamId || streamId
+      }
+    };
       
       console.log('📤 最终发送的请求体:', JSON.stringify(requestBody, null, 2));
       
@@ -340,7 +351,17 @@ class ApiService {
         method: 'POST',
         data: requestBody
       });
-      return response;
+      try {
+        const totals = await this.getVote(streamId);
+        return totals;
+      } catch (e0) {
+        try {
+          const totalsV1 = await this.getVotes(streamId);
+          return totalsV1;
+        } catch (e1) {
+          return response;
+        }
+      }
     } catch (error) {
       // 详细记录错误信息
       console.error('❌ 投票请求失败详细信息:', {
@@ -358,6 +379,46 @@ class ApiService {
       }
       
       throw error;
+    }
+  }
+
+  /**
+   * 直接按分布投票（left/right 和为100）
+   */
+  async userVoteDistribution(leftVotes, rightVotes, streamId) {
+    if (typeof leftVotes !== 'number' || typeof rightVotes !== 'number') {
+      throw new Error('leftVotes/rightVotes 必须是数字');
+    }
+    const total = Math.round(leftVotes) + Math.round(rightVotes);
+    if (total !== 100) {
+      throw new Error('投票总和必须为100');
+    }
+    if (!streamId) {
+      throw new Error('投票必须指定直播流ID (streamId)');
+    }
+    const requestBody = {
+      request: {
+        leftVotes: Math.round(leftVotes),
+        rightVotes: Math.round(rightVotes),
+        streamId: streamId,
+        stream_id: streamId
+      }
+    };
+    const response = await this.request({
+      url: '/api/v1/user-vote',
+      method: 'POST',
+      data: requestBody
+    });
+    try {
+      const totals = await this.getVote(streamId);
+      return totals;
+    } catch (e0) {
+      try {
+        const totalsV1 = await this.getVotes(streamId);
+        return totalsV1;
+      } catch (e1) {
+        return response;
+      }
     }
   }
 
@@ -521,7 +582,37 @@ class ApiService {
     if (!streamId) {
       throw new Error('查询用户投票状态必须指定直播流ID (streamId)');
     }
-    const url = `/api/v1/user-votes?stream_id=${streamId}`;
+    
+    // 获取当前用户ID
+    let userId = null;
+    try {
+      if (typeof uni !== 'undefined' && uni.getStorageSync) {
+        const currentUser = uni.getStorageSync('currentUser');
+        if (currentUser && currentUser.id) {
+          userId = currentUser.id;
+        }
+      } else if (typeof localStorage !== 'undefined') {
+        const currentUserStr = localStorage.getItem('currentUser');
+        if (currentUserStr) {
+          try {
+            const currentUser = JSON.parse(currentUserStr);
+            if (currentUser && currentUser.id) {
+              userId = currentUser.id;
+            }
+          } catch (e) {
+            // 解析失败，忽略
+          }
+        }
+      }
+    } catch (error) {
+      // 获取用户ID失败，忽略
+    }
+    
+    if (!userId) {
+      throw new Error('用户未登录，无法获取投票记录');
+    }
+    
+    const url = `/api/v1/user-votes?stream_id=${streamId}&user_id=${userId}`;
     const response = await this.request({ url, method: 'GET' });
     if (response && response.success && response.data) {
       return response.data;
