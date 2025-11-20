@@ -6,28 +6,20 @@
 				"navigationBarTitleText": "辩论LIVE"
 			}
 		},
-		{
-			"path": "pages/live-select/live-select",
-			"style": {
-				"navigationBarTitleText": "选择直播间",
-				"navigationStyle": "custom",
-				"app-plus": {
-					"titleNView": false,
-					"bounce": "none"
-				}
-			}
-		},
-		{
-			"path": "pages/home/home",
-			"style": {
-				"navigationBarTitleText": "首页",
-				"navigationStyle": "custom",
-				"app-plus": {
-					"titleNView": false,
-					"bounce": "none"
-				}
-			}
-		},
+	{
+		"path": "pages/live-select/live-select",
+		"style": {
+			"navigationBarTitleText": "选择直播间",
+			"navigationBarBackgroundColor": "#FFEB3B"
+		}
+	},
+	{
+		"path": "pages/home/home",
+		"style": {
+			"navigationBarTitleText": "直播间",
+			"navigationBarBackgroundColor": "#FFEB3B"
+		}
+	},
 		{
 			"path": "pages/profile/profile",
 			"style": {
@@ -43,7 +35,7 @@
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "辩论LIVE",
-		"navigationBarBackgroundColor": "#FF1493",
+		"navigationBarBackgroundColor": "#FFEB3B",
 		"backgroundColor": "#F8F8F8"
 	},
 	"easycom": {

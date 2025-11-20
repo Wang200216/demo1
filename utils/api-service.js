@@ -521,7 +521,7 @@ class ApiService {
    */
   async getDebateTopic(streamId = null) {
     const url = streamId 
-      ? `/api/v1/debate-topic?stream_id=${streamId}`
+      ? `/api/v1/admin/streams/${streamId}/debate`
       : '/api/v1/debate-topic';
     const response = await this.request({
       url,
